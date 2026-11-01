@@ -14,23 +14,26 @@ import {
 
 export default function BuyerDashboard({
   currentUser,
-  orders,
-  rfqs,
+  orders = [],
+  rfqs = [],
   onNavigateTab,
   onOpenProfile,
   t,
   currentLang
 }) {
-  const buyerOrders = orders.filter(o => 
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const safeRfqs = Array.isArray(rfqs) ? rfqs : [];
+
+  const buyerOrders = safeOrders.filter(o => 
     (currentUser?.id && o.buyerId === currentUser.id) ||
     (!currentUser?.id && (o.buyerName?.includes('Spices India') || o.buyerName?.includes('AyurVeda')))
   );
-  const buyerRFQs = rfqs.filter(r => 
+  const buyerRFQs = safeRfqs.filter(r => 
     (currentUser?.id && r.buyerId === currentUser.id) ||
     (!currentUser?.id && (r.buyerName?.includes('Spices India') || r.buyerName?.includes('AyurVeda')))
   );
 
-  const totalSpend = buyerOrders.reduce((sum, o) => sum + (o.totalCommodityAmount || 0), 0);
+  const totalSpend = buyerOrders.reduce((sum, o) => sum + (Number(o.totalCommodityAmount) || 0), 0);
   const activeShipments = buyerOrders.filter(o => o.status === 'Dispatched' || o.status === 'Escrow_Paid').length;
   const estimatedSavings = Math.round(totalSpend * 0.22); // ~22% savings vs open market APMC markups
 
@@ -139,49 +142,63 @@ export default function BuyerDashboard({
           <span>My Sourcing Orders & Milestones</span>
         </h3>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-400 uppercase font-semibold">
-                <th className="pb-3">Order ID</th>
-                <th className="pb-3">Commodity</th>
-                <th className="pb-3">Mizoram FPO Partner</th>
-                <th className="pb-3">Deposit (Escrow)</th>
-                <th className="pb-3">Milestone</th>
-                <th className="pb-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {buyerOrders.map(order => (
-                <tr key={order.id} className="hover:bg-slate-50 transition">
-                  <td className="py-3 font-mono font-bold text-slate-900">{order.id}</td>
-                  <td className="py-3 font-bold text-slate-800">{order.productName} ({order.quantity} {order.unit})</td>
-                  <td className="py-3 font-medium text-emerald-800">{order.sellerName}</td>
-                  <td className="py-3 font-mono font-bold text-slate-900 font-sans">
-                    ₹{order.totalCommodityAmount.toLocaleString('en-IN')}
-                  </td>
-                  <td className="py-3">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                      order.status === 'Settled' ? 'bg-green-100 text-green-800' :
-                      order.status === 'Dispatched' ? 'bg-blue-100 text-blue-800' :
-                      order.status === 'Escrow_Paid' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
-                    }`}>
-                      {order.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="py-3 text-right">
-                    <button
-                      onClick={() => onNavigateTab('orders')}
-                      className="text-xs font-bold text-emerald-700 hover:text-emerald-900"
-                    >
-                      Track / Inspect ➜
-                    </button>
-                  </td>
+        {buyerOrders.length === 0 ? (
+          <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+            <Truck className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+            <h4 className="text-sm font-bold text-slate-700">No Orders Placed Yet</h4>
+            <p className="text-xs text-slate-500 mt-1 mb-4">Browse our verified Mizoram farmer harvests and submit RFQs or direct orders with zero middleman fee.</p>
+            <button
+              onClick={() => onNavigateTab('marketplace')}
+              className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-xs cursor-pointer"
+            >
+              Browse Marketplace ➜
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-400 uppercase font-semibold">
+                  <th className="pb-3">Order ID</th>
+                  <th className="pb-3">Commodity</th>
+                  <th className="pb-3">Mizoram FPO Partner</th>
+                  <th className="pb-3">Deposit (Escrow)</th>
+                  <th className="pb-3">Milestone</th>
+                  <th className="pb-3 text-right">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {buyerOrders.map(order => (
+                  <tr key={order.id} className="hover:bg-slate-50 transition">
+                    <td className="py-3 font-mono font-bold text-slate-900">{order.id}</td>
+                    <td className="py-3 font-bold text-slate-800">{order.productName} ({order.quantity} {order.unit})</td>
+                    <td className="py-3 font-medium text-emerald-800">{order.sellerName || 'Verified Mizoram Collective'}</td>
+                    <td className="py-3 font-mono font-bold text-slate-900 font-sans">
+                      ₹{(Number(order.totalCommodityAmount) || 0).toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-3">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        order.status === 'Settled' ? 'bg-green-100 text-green-800' :
+                        order.status === 'Dispatched' ? 'bg-blue-100 text-blue-800' :
+                        order.status === 'Escrow_Paid' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {order.status ? String(order.status).replace(/_/g, ' ') : 'Pending'}
+                      </span>
+                    </td>
+                    <td className="py-3 text-right">
+                      <button
+                        onClick={() => onNavigateTab('orders')}
+                        className="text-xs font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                      >
+                        Track / Inspect ➜
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
     </div>

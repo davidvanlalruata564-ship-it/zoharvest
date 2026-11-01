@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function OrdersAndEscrowTracker({
-  orders,
+  orders = [],
   onOpenEscrowModal,
   onDispatchOrder,
   onVerifyAndRelease,
@@ -27,6 +27,7 @@ export default function OrdersAndEscrowTracker({
   t,
   currentLang
 }) {
+  const safeOrders = Array.isArray(orders) ? orders : [];
   const [dispatchModalOrder, setDispatchModalOrder] = useState(null);
   const [carrier, setCarrier] = useState('NorthEast Express Cargo / BlueDart');
   const [trackingNumber, setTrackingNumber] = useState('NEC-MZ-994821');
@@ -94,7 +95,7 @@ export default function OrdersAndEscrowTracker({
       </div>
 
       {/* Orders List */}
-      {orders.length === 0 ? (
+      {safeOrders.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-xs space-y-2">
           <FileText className="w-12 h-12 text-slate-300 mx-auto" />
           <h3 className="text-base font-bold text-slate-700">No active orders yet</h3>
@@ -104,7 +105,7 @@ export default function OrdersAndEscrowTracker({
         </div>
       ) : (
         <div className="space-y-6">
-          {orders.map((order) => {
+          {safeOrders.map((order) => {
             const step = getStepIndex(order.status);
 
             return (
@@ -196,7 +197,7 @@ export default function OrdersAndEscrowTracker({
                     <div className="text-xs">
                       <span className="text-slate-400 block text-[10px] uppercase font-bold">Consignment Volume</span>
                       <span className="text-lg font-extrabold text-slate-900 font-sans">
-                        {order.quantity} {order.unit} @ ₹{order.unitPrice.toLocaleString('en-IN')}/{order.unit}
+                        {order.quantity} {order.unit} @ ₹{(Number(order.unitPrice) || 0).toLocaleString('en-IN')}/{order.unit}
                       </span>
                     </div>
 
@@ -220,15 +221,15 @@ export default function OrdersAndEscrowTracker({
                   <div className="md:col-span-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1.5 text-xs">
                     <div className="flex justify-between text-slate-600">
                       <span>Total Commodity Value:</span>
-                      <span className="font-bold text-slate-900 font-sans">₹{order.totalCommodityAmount.toLocaleString('en-IN')}</span>
+                      <span className="font-bold text-slate-900 font-sans">₹{(Number(order.totalCommodityAmount) || 0).toLocaleString('en-IN')}</span>
                     </div>
                     <div className="flex justify-between text-slate-500 text-[11px]">
                       <span>ZOHARVEST Platform Fee (2.5%):</span>
-                      <span className="font-semibold text-emerald-800 font-sans">- ₹{order.platformFeeAmount.toLocaleString('en-IN')}</span>
+                      <span className="font-semibold text-emerald-800 font-sans">- ₹{(Number(order.platformFeeAmount) || 0).toLocaleString('en-IN')}</span>
                     </div>
                     <div className="pt-1.5 border-t border-slate-200 flex justify-between font-extrabold text-slate-900">
                       <span>Net Farm Payout:</span>
-                      <span className="text-amber-700 font-sans text-sm">₹{order.netPayableToSeller.toLocaleString('en-IN')}</span>
+                      <span className="text-amber-700 font-sans text-sm">₹{(Number(order.netPayableToSeller) || 0).toLocaleString('en-IN')}</span>
                     </div>
                   </div>
 

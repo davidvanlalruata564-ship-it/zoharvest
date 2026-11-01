@@ -205,11 +205,11 @@ export default function Navbar({
                   title="Customize Profile"
                 >
                   <div className="w-7 h-7 rounded-full bg-emerald-800 text-amber-300 flex items-center justify-center font-bold text-xs shadow-xs">
-                    {authenticatedUser.name ? authenticatedUser.name[0].toUpperCase() : 'U'}
+                    {authenticatedUser?.name ? authenticatedUser.name[0].toUpperCase() : 'U'}
                   </div>
                   <div className="hidden sm:block">
-                    <div className="font-bold text-stone-900 text-xs truncate max-w-[110px]">{authenticatedUser.name}</div>
-                    <div className="text-[10px] text-emerald-800 font-semibold uppercase">{authenticatedUser.role}</div>
+                    <div className="font-bold text-stone-900 text-xs truncate max-w-[110px]">{authenticatedUser?.name || 'User'}</div>
+                    <div className="text-[10px] text-emerald-800 font-semibold uppercase">{authenticatedUser?.role || 'buyer'}</div>
                   </div>
                 </button>
 
@@ -342,8 +342,10 @@ export default function Navbar({
               <div className="space-y-2">
                 <div className="flex items-center justify-between p-2.5 bg-stone-50 rounded-xl">
                   <div>
-                    <div className="text-xs font-bold text-stone-800">{authenticatedUser.name}</div>
-                    <div className="text-[10px] text-emerald-800 font-bold uppercase">{authenticatedUser.role} • {authenticatedUser.organization}</div>
+                    <div className="text-xs font-bold text-stone-800">{authenticatedUser?.name || 'User'}</div>
+                    <div className="text-[10px] text-emerald-800 font-bold uppercase">
+                      {(authenticatedUser?.role || 'buyer').toUpperCase()} • {authenticatedUser?.organization || 'Enterprise'}
+                    </div>
                   </div>
                   <button onClick={onLogout} className="text-xs font-bold text-red-600 hover:underline">Sign Out</button>
                 </div>

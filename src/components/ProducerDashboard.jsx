@@ -410,7 +410,7 @@ export default function ProducerDashboard({
                   </td>
                   <td className="py-3 font-medium text-slate-700">{order.buyerName}</td>
                   <td className="py-3 font-mono font-bold text-emerald-900 font-sans">
-                    ₹{order.netPayableToSeller.toLocaleString('en-IN')}
+                    ₹{(Number(order.netPayableToSeller) || 0).toLocaleString('en-IN')}
                   </td>
                   <td className="py-3">
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -418,7 +418,7 @@ export default function ProducerDashboard({
                       order.status === 'Dispatched' ? 'bg-blue-100 text-blue-800' :
                       order.status === 'Escrow_Paid' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
                     }`}>
-                      {order.status.replace('_', ' ')}
+                      {order.status ? String(order.status).replace(/_/g, ' ') : 'Pending'}
                     </span>
                   </td>
                   <td className="py-3 text-right">

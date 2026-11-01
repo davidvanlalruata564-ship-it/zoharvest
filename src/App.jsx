@@ -81,10 +81,17 @@ export default function App() {
 
   // Handle Authentication Success
   const handleAuthSuccess = (user, token) => {
-    setAuthenticatedUser(user);
+    if (!user) return;
+    const safeUser = {
+      role: 'buyer',
+      organization: 'Wholesale Buyer',
+      district: 'Aizawl',
+      ...user
+    };
+    setAuthenticatedUser(safeUser);
     setAuthToken(token);
-    if (user.role) {
-      setCurrentRole(user.role);
+    if (safeUser.role) {
+      setCurrentRole(safeUser.role);
     }
   };
 
