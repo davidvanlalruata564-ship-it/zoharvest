@@ -49,6 +49,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
   const [otpSent, setOtpSent] = useState(false);
   const [testOtpNotice, setTestOtpNotice] = useState('');
 
+  // Email / Gmail OTP verification states
+  const [emailOtp, setEmailOtp] = useState('');
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [emailOtpNotice, setEmailOtpNotice] = useState('');
+  const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
+
   // Cryptographic Google GIS verification handler
   const handleGoogleCredentialResponse = async (response) => {
     if (!response?.credential) {
@@ -199,10 +205,57 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
     }
   };
 
-  // 2. Email/Password Register
+  // 2. Request Email / Gmail OTP
+  const handleRequestEmailOtp = async () => {
+    if (!email || !email.includes('@')) {
+      setErrorMessage('Please enter a valid email address first to receive the verification code.');
+      return false;
+    }
+    setErrorMessage('');
+    setSendingEmailOtp(true);
+
+    try {
+      const res = await fetch('/api/auth/email-otp-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to dispatch email verification code.');
+      }
+
+      setEmailOtpSent(true);
+      if (data.testOtp) {
+        setEmailOtpNotice(data.testOtp);
+      }
+      setSuccessMessage(`6-digit verification code sent to ${email}. Please enter the code below to complete registration.`);
+      return true;
+    } catch (err) {
+      setErrorMessage(err.message);
+      return false;
+    } finally {
+      setSendingEmailOtp(false);
+    }
+  };
+
+  // 3. Email/Password Register (Mandatory OTP Verification)
   const handleRegister = async (e) => {
     e.preventDefault();
     setErrorMessage('');
+
+    if (!emailOtpSent) {
+      const sent = await handleRequestEmailOtp();
+      if (!sent) return;
+      return;
+    }
+
+    if (!emailOtp || emailOtp.trim().length < 6) {
+      setErrorMessage('Please enter the 6-digit verification code sent to your email to verify account ownership.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -217,7 +270,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
           role,
           organization: organization || (role === 'farmer' ? `${district} Organic Union` : 'Enterprise Buyer Corp'),
           district,
-          address: address || `${district}, Mizoram`
+          address: address || `${district}, Mizoram`,
+          emailOtp: emailOtp.trim()
         })
       });
 
@@ -231,7 +285,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
         localStorage.setItem('zh_user', JSON.stringify(data.user));
       }
 
-      setSuccessMessage('Account created and verified successfully!');
+      setSuccessMessage('Gmail verified and account created successfully!');
       setTimeout(() => {
         onAuthSuccess(data.user, data.token);
         onClose();
@@ -533,13 +587,31 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">Business Email</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-slate-700">Gmail / Business Email</label>
+                  {email && email.includes('@') && !emailOtpSent && (
+                    <button
+                      type="button"
+                      onClick={handleRequestEmailOtp}
+                      disabled={sendingEmailOtp}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 underline cursor-pointer disabled:opacity-50"
+                    >
+                      {sendingEmailOtp ? 'Sending code...' : 'Send OTP'}
+                    </button>
+                  )}
+                </div>
                 <input
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@domain.com"
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailOtpSent) {
+                      setEmailOtpSent(false);
+                      setEmailOtp('');
+                    }
+                  }}
+                  placeholder="name@gmail.com"
                   className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
               </div>
@@ -593,12 +665,57 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
               </div>
             </div>
 
+            {/* Mandatory 6-Digit Email Verification Box */}
+            {emailOtpSent && (
+              <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-2xl space-y-2 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950">
+                    <Mail className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Enter 6-Digit Code Sent to {email}</span>
+                  </div>
+                  {emailOtpNotice && (
+                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded text-[10px] font-mono font-bold">
+                      Code: {emailOtpNotice}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={emailOtp}
+                    onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Enter 6-digit OTP"
+                    className="flex-1 px-3 py-2 text-sm font-mono font-bold text-center tracking-widest bg-white border border-amber-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRequestEmailOtp}
+                    disabled={sendingEmailOtp}
+                    className="text-xs font-bold text-slate-700 hover:text-slate-900 py-2 px-3 border border-slate-300 rounded-xl bg-white cursor-pointer disabled:opacity-50"
+                  >
+                    {sendingEmailOtp ? 'Sending...' : 'Resend'}
+                  </button>
+                </div>
+                <p className="text-[10px] text-amber-800 font-medium">
+                  Gmail ownership verification is required before your account can be created.
+                </p>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || sendingEmailOtp}
               className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3 rounded-xl text-xs sm:text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              <span>{loading ? 'Creating Account...' : 'Complete Registration'}</span>
+              <span>
+                {loading
+                  ? 'Verifying & Registering...'
+                  : !emailOtpSent
+                  ? 'Send Verification Code & Continue'
+                  : 'Verify Gmail & Complete Registration'}
+              </span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

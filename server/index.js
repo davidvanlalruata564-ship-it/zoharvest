@@ -353,6 +353,7 @@ const adminActionLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 app.use('/api/auth/', authLimiter);
 app.use('/api/auth/otp-request', otpRequestLimiter);
+app.use('/api/auth/email-otp-request', otpRequestLimiter);
 app.use('/api/admin/', adminActionLimiter);
 
 // Serve static frontend build
@@ -369,6 +370,7 @@ let orders = [...initialOrders];
 let users = [...initialUsers];
 let notifications = [...initialNotifications];
 const otpStore = new Map();
+const emailOtpStore = new Map();
 
 // Initial Community Donations Data (Transparency Ledger)
 const initialDonations = [
@@ -925,10 +927,49 @@ app.post('/api/orders/:id/verify-and-release', authenticateToken, requireRole('b
 // USERS & ONBOARDING / AUTHENTICATION & KYC
 // ----------------------
 
-// Register new user account with enterprise security validation & password hashing
+// ----------------------------------------------------
+// GMAIL / EMAIL OTP VERIFICATION REQUEST
+// ----------------------------------------------------
+app.post('/api/auth/email-otp-request', (req, res) => {
+  const { email } = req.body;
+  if (!email || !validator.isEmail(email)) {
+    return res.status(400).json({ error: 'A valid email address is required.' });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+
+  const existingEmail = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
+  if (existingEmail) {
+    return res.status(409).json({ error: 'An account with this email address already exists. Please sign in.' });
+  }
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  emailOtpStore.set(cleanEmail, {
+    code,
+    expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+    attempts: 0
+  });
+
+  logSecurityEvent('EMAIL_OTP_REQUESTED', { email: cleanEmail }, req);
+
+  pushNotification({
+    type: 'email',
+    recipientRole: 'all',
+    title: '📧 Gmail Verification Code',
+    message: `Your ZOHARVEST account verification code is: ${code}. Valid for 10 minutes. Enter this code to verify your Gmail address.`
+  });
+
+  res.json({
+    success: true,
+    message: `6-digit verification code sent to ${cleanEmail}`,
+    ...(isProduction ? {} : { testOtp: code })
+  });
+});
+
+// Register new user account with mandatory email verification & password hashing
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { name, email, password, phone, role, organization, district, address } = req.body;
+    const { name, email, password, phone, role, organization, district, address, emailOtp } = req.body;
 
     if (!name || !email || !password || !phone) {
       return res.status(400).json({ error: 'Name, email, password, and phone number are required.' });
@@ -939,6 +980,40 @@ app.post('/api/auth/register', async (req, res) => {
     if (!validator.isEmail(cleanEmail)) {
       return res.status(400).json({ error: 'Please enter a valid business or personal email address.' });
     }
+
+    // MANDATORY EMAIL / GMAIL VERIFICATION
+    if (!emailOtp) {
+      return res.status(400).json({ 
+        error: 'Gmail/Email verification is mandatory. Please enter the 6-digit verification code sent to your email.' 
+      });
+    }
+
+    const otpRecord = emailOtpStore.get(cleanEmail);
+    if (!otpRecord || Date.now() > otpRecord.expiresAt) {
+      if (otpRecord) emailOtpStore.delete(cleanEmail);
+      return res.status(400).json({ 
+        error: 'Verification code has expired or has not been requested for this email. Please click "Send Verification Code".' 
+      });
+    }
+
+    otpRecord.attempts = (otpRecord.attempts || 0) + 1;
+    if (otpRecord.attempts > 5) {
+      emailOtpStore.delete(cleanEmail);
+      logSecurityEvent('EMAIL_OTP_MAX_ATTEMPTS_EXCEEDED', { email: cleanEmail }, req);
+      return res.status(429).json({ 
+        error: 'Maximum verification attempts exceeded. Please request a new verification code.' 
+      });
+    }
+
+    if (otpRecord.code !== String(emailOtp).trim()) {
+      const remaining = 5 - otpRecord.attempts;
+      return res.status(400).json({ 
+        error: `Invalid email verification code. ${remaining} attempt(s) remaining.` 
+      });
+    }
+
+    // Invalidate OTP immediately upon successful verification
+    emailOtpStore.delete(cleanEmail);
 
     // Enterprise Password Policy Enforcement (NIST SP 800-63B)
     const pwdErr = validatePasswordPolicy(password);
@@ -966,15 +1041,17 @@ app.post('/api/auth/register', async (req, res) => {
       id: `user-${Date.now()}`,
       name: name.trim(),
       email: cleanEmail,
+      emailVerified: true,
       passwordHash,
       role: role || 'farmer',
       organization: organization ? organization.trim() : 'Mizoram Producer Co-op',
       phone: cleanPhone,
       district: district || 'Aizawl',
       address: address ? address.trim() : `${district || 'Aizawl'}, Mizoram`,
-      isVerified: false,
+      isVerified: true,
       status: 'active',
-      verificationDoc: 'Pending Compliance Document Upload',
+      authProvider: 'email_password_verified',
+      verificationDoc: 'Gmail Ownership Verified via 2FA OTP',
       grossEarnings: 0,
       activeEscrow: 0,
       createdAt: new Date().toISOString()
@@ -1273,15 +1350,8 @@ app.post('/api/auth/google', async (req, res) => {
       verifiedEmail = payload.email.trim().toLowerCase();
       verifiedName = payload.name || payload.email.split('@')[0];
       verifiedAvatar = payload.picture;
-    } else if (!isProduction && email) {
-      // Development simulated fallback for offline local testing
-      if (!validator.isEmail(email)) {
-        return res.status(400).json({ error: 'A valid email address is required.' });
-      }
-      verifiedEmail = email.trim().toLowerCase();
-      verifiedName = name || verifiedEmail.split('@')[0];
     } else {
-      return res.status(400).json({ error: 'Google credential token is required for authentication.' });
+      return res.status(400).json({ error: 'Cryptographic Google credential token is required for authentication.' });
     }
 
     let user = users.find(u => u.email && u.email.toLowerCase() === verifiedEmail);
