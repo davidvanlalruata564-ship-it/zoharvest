@@ -1174,7 +1174,15 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user) {
       recordFailedLogin(identifier);
       logSecurityEvent('AUTH_FAILURE_NO_USER', { identifier }, req);
-      return res.status(401).json({ error: 'Invalid login credentials. Please check and try again.' });
+      return res.status(401).json({ error: 'Invalid login credentials. If you have not created an account yet, please click "Create Account".' });
+    }
+
+    // Inform user if registered via Google
+    if (user.authProvider === 'google' && !user.passwordHash) {
+      return res.status(400).json({ 
+        error: 'This account is linked to Google. Please use the "Continue with Google" button above to sign in.',
+        isGoogleAccount: true
+      });
     }
 
     // Check account status
@@ -1392,11 +1400,14 @@ app.post('/api/auth/google', async (req, res) => {
       const verifyRes = await fetch(verifyUrl);
 
       if (!verifyRes.ok) {
-        logSecurityEvent('GOOGLE_TOKEN_VERIFICATION_FAILED', { status: verifyRes.status }, req);
+        const errText = await verifyRes.text();
+        console.error('[GOOGLE TOKEN VERIFICATION FAILED]', verifyRes.status, errText);
+        logSecurityEvent('GOOGLE_TOKEN_VERIFICATION_FAILED', { status: verifyRes.status, details: errText }, req);
         return res.status(401).json({ error: 'Google authentication failed: Cryptographic ID token is invalid or expired.' });
       }
 
       const payload = await verifyRes.json();
+      console.log('[GOOGLE TOKEN PAYLOAD RECEIVED]', { email: payload.email, email_verified: payload.email_verified, aud: payload.aud });
 
       // Ensure the Gmail address was confirmed by Google
       const isEmailVerified = payload.email_verified === 'true' || payload.email_verified === true;
