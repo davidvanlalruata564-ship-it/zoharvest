@@ -184,7 +184,7 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com/gsi/client"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com", "https://accounts.google.com/gsi/client"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
         imgSrc: [
@@ -195,10 +195,10 @@ app.use(
           "https://lh3.googleusercontent.com", 
           "https://*.googleusercontent.com"
         ],
-        frameSrc: ["'self'", "https://accounts.google.com/gsi/"],
+        frameSrc: ["'self'", "https://accounts.google.com"],
         connectSrc: [
           "'self'", 
-          "https://accounts.google.com/gsi/",
+          "https://accounts.google.com",
           "https://oauth2.googleapis.com",
           ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : [])
         ],
@@ -217,6 +217,7 @@ app.use(
     frameguard: { action: 'deny' },
     noSniff: true,
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' }
   })
