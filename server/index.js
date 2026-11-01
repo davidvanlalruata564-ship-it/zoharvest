@@ -1023,6 +1023,16 @@ app.post('/api/auth/email-otp-request', async (req, res) => {
   });
 });
 
+// Helper: Sanitize user object for secure API responses
+function sanitizeUser(user) {
+  if (!user) return null;
+  const { passwordHash, ...userSafe } = user;
+  return {
+    ...userSafe,
+    hasPassword: Boolean(passwordHash)
+  };
+}
+
 // Register new user account with mandatory email verification & password hashing
 app.post('/api/auth/register', async (req, res) => {
   try {
@@ -1134,7 +1144,7 @@ app.post('/api/auth/register', async (req, res) => {
     });
 
     const token = generateToken(newUser);
-    const { passwordHash: _, ...userSafe } = newUser;
+    const userSafe = sanitizeUser(newUser);
 
     res.status(201).json({
       success: true,
@@ -1204,7 +1214,7 @@ app.post('/api/auth/login', async (req, res) => {
     logSecurityEvent('AUTH_SUCCESS', { userId: user.id, role: user.role }, req);
 
     const token = generateToken(user);
-    const { passwordHash: _, ...userSafe } = user;
+    const userSafe = sanitizeUser(user);
 
     res.json({
       success: true,
@@ -1233,7 +1243,7 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
 app.get('/api/auth/me', authenticateToken, (req, res) => {
   const user = users.find(u => u.id === req.user.id);
   if (!user) return res.status(404).json({ error: 'User not found.' });
-  const { passwordHash: _, ...userSafe } = user;
+  const userSafe = sanitizeUser(user);
   res.json({ success: true, user: userSafe });
 });
 
@@ -1252,7 +1262,7 @@ app.post('/api/auth/upload-kyc', authenticateToken, (req, res) => {
     message: `${user.name} (${user.organization}) uploaded ${user.verificationDoc}. Ready for Compliance approval.`
   });
 
-  const { passwordHash: _, ...userSafe } = user;
+  const userSafe = sanitizeUser(user);
   res.json({ success: true, user: userSafe });
 });
 
@@ -1315,16 +1325,32 @@ app.put('/api/users/profile', authenticateToken, (req, res) => {
 
   logSecurityEvent('PROFILE_UPDATED', { userId: user.id }, req);
 
-  const { passwordHash: _, ...userSafe } = user;
+  const userSafe = sanitizeUser(user);
   res.json({ success: true, message: 'Profile updated successfully.', user: userSafe });
 });
 
-// Change Password with enterprise complexity verification
+// Set or Change Password (Supports Google-authenticated users establishing their first password and standard password changes)
 app.put('/api/users/change-password', authenticateToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Current password and new password are required.' });
+    const user = users.find(u => u.id === req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    const hasExistingPassword = Boolean(user.passwordHash);
+
+    if (hasExistingPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required to change your password.' });
+      }
+      const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isMatch) {
+        logSecurityEvent('PASSWORD_CHANGE_FAILED_MISMATCH', { userId: user.id }, req);
+        return res.status(400).json({ error: 'Current password does not match.' });
+      }
+    }
+
+    if (!newPassword) {
+      return res.status(400).json({ error: 'New password is required.' });
     }
 
     const pwdErr = validatePasswordPolicy(newPassword);
@@ -1332,22 +1358,28 @@ app.put('/api/users/change-password', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: pwdErr });
     }
 
-    const user = users.find(u => u.id === req.user.id);
-    if (!user) return res.status(404).json({ error: 'User not found.' });
-
-    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!isMatch) {
-      logSecurityEvent('PASSWORD_CHANGE_FAILED_MISMATCH', { userId: user.id }, req);
-      return res.status(400).json({ error: 'Current password does not match.' });
-    }
-
     const salt = await bcrypt.genSalt(10);
     user.passwordHash = await bcrypt.hash(newPassword, salt);
 
-    logSecurityEvent('PASSWORD_CHANGED_SUCCESS', { userId: user.id }, req);
+    logSecurityEvent(hasExistingPassword ? 'PASSWORD_CHANGED_SUCCESS' : 'PASSWORD_SETUP_SUCCESS', { userId: user.id }, req);
 
-    res.json({ success: true, message: 'Password changed successfully.' });
+    pushNotification({
+      type: 'system',
+      recipientRole: 'all',
+      title: hasExistingPassword ? '🔒 Password Updated' : '🔑 Password Configured',
+      message: `Your account password has been successfully ${hasExistingPassword ? 'updated' : 'configured'}. You can now sign in using your email and password.`
+    });
+
+    const userSafe = sanitizeUser(user);
+    res.json({ 
+      success: true, 
+      message: hasExistingPassword 
+        ? 'Password changed successfully.' 
+        : 'Password configured successfully! You can now log in using either Google or your email & password.', 
+      user: userSafe 
+    });
   } catch (e) {
+    console.error('[PASSWORD UPDATE ERROR]', e);
     res.status(500).json({ error: 'Password update failed.' });
   }
 });
@@ -1466,7 +1498,7 @@ app.post('/api/auth/google', async (req, res) => {
     }
 
     const token = generateToken(user);
-    const { passwordHash: _, ...userSafe } = user;
+    const userSafe = sanitizeUser(user);
     res.json({ success: true, message: 'Google authentication verified successfully.', token, user: userSafe });
   } catch (err) {
     console.error('[GOOGLE AUTH ERROR]', err);

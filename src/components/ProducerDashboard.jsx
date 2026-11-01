@@ -128,6 +128,32 @@ export default function ProducerDashboard({
         </div>
       </div>
 
+      {/* Google User Password Setup Notice */}
+      {currentUser?.authProvider === 'google' && !currentUser?.hasPassword && (
+        <div className="bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-emerald-500/15 border border-amber-300 rounded-3xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold text-lg shadow-xs">
+              🔑
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-extrabold text-slate-900">
+                Setup Direct Password for {currentUser?.email}
+              </h4>
+              <p className="text-[11px] sm:text-xs text-slate-600 mt-0.5">
+                You logged in with Google. Set an account password to also sign in directly using your email and password without Google.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onOpenProfile('security')}
+            className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+          >
+            <span>Set Password Now</span>
+            <span>➜</span>
+          </button>
+        </div>
+      )}
+
       {/* Real-time Gross Earnings & Payout Tracker Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         

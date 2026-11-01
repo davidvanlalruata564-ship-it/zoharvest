@@ -62,6 +62,12 @@ export default function App() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileInitialTab, setProfileInitialTab] = useState('general');
+
+  const handleOpenProfile = (tab = 'general') => {
+    setProfileInitialTab(tab);
+    setIsProfileOpen(true);
+  };
   const [authToken, setAuthToken] = useState(() => localStorage.getItem('zh_token') || null);
   const [authenticatedUser, setAuthenticatedUser] = useState(() => {
     try {
@@ -592,7 +598,7 @@ export default function App() {
         currentUser={currentUser}
         authenticatedUser={authenticatedUser}
         onOpenAuthModal={() => setIsAuthOpen(true)}
-        onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenProfile={handleOpenProfile}
         onLogout={handleLogout}
       />
 
@@ -687,7 +693,7 @@ export default function App() {
                   orders={orders}
                   rfqs={rfqs}
                   onOpenNewListing={() => setIsNewListingOpen(true)}
-                  onOpenProfile={() => setIsProfileOpen(true)}
+                  onOpenProfile={handleOpenProfile}
                   onUpdateProduct={handleUpdateProduct}
                   onDeleteProduct={handleDeleteProduct}
                   onNavigateTab={(tab) => setActiveTab(tab)}
@@ -700,7 +706,7 @@ export default function App() {
                   currentUser={currentUser}
                   orders={orders}
                   rfqs={rfqs}
-                  onOpenProfile={() => setIsProfileOpen(true)}
+                  onOpenProfile={handleOpenProfile}
                   onNavigateTab={(tab) => setActiveTab(tab)}
                   t={t}
                   currentLang={currentLang}
@@ -852,6 +858,7 @@ export default function App() {
         currentUser={currentUser}
         districts={districts}
         onProfileUpdated={handleProfileUpdated}
+        initialTab={profileInitialTab}
         t={t}
       />
 

@@ -24,14 +24,22 @@ export default function ProfileModal({
   currentUser,
   districts = [],
   onProfileUpdated,
+  initialTab = 'general',
   t
 }) {
   if (!isOpen || !currentUser) return null;
 
-  const [activeTab, setActiveTab] = useState('general'); // 'general' | 'bank' | 'security'
+  const [activeTab, setActiveTab] = useState(initialTab || 'general');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Synchronize initialTab when opening
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, isOpen]);
 
   // General fields
   const [name, setName] = useState(currentUser.name || '');
@@ -103,7 +111,9 @@ export default function ProfileModal({
     }
   };
 
-  // Submit password change
+  const hasExistingPassword = currentUser?.hasPassword === true || (currentUser?.authProvider !== 'google' && currentUser?.hasPassword !== false);
+
+  // Submit password change or initial setup for Google accounts
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -114,7 +124,12 @@ export default function ProfileModal({
       return;
     }
     if (newPassword.length < 8) {
-      setErrorMsg('New password must be at least 8 characters long.');
+      setErrorMsg('Password must be at least 8 characters long.');
+      return;
+    }
+
+    if (hasExistingPassword && !currentPassword) {
+      setErrorMsg('Please enter your current password.');
       return;
     }
 
@@ -127,7 +142,7 @@ export default function ProfileModal({
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          currentPassword,
+          currentPassword: hasExistingPassword ? currentPassword : '',
           newPassword
         })
       });
@@ -137,11 +152,15 @@ export default function ProfileModal({
         throw new Error(data.error || 'Password update failed.');
       }
 
-      setSuccessMsg('Password changed successfully! Keep it safe.');
+      setSuccessMsg(data.message || (hasExistingPassword ? 'Password updated successfully!' : 'Password setup complete! You can now log in with email & password.'));
+      if (data.user) {
+        localStorage.setItem('zh_user', JSON.stringify(data.user));
+        onProfileUpdated(data.user);
+      }
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       setErrorMsg(err.message);
     } finally {
@@ -216,7 +235,12 @@ export default function ProfileModal({
               }`}
             >
               <Lock className="w-3.5 h-3.5" />
-              <span>Security & Password</span>
+              <span>{hasExistingPassword ? 'Security & Password' : 'Setup Password'}</span>
+              {!hasExistingPassword && (
+                <span className="bg-amber-400 text-slate-950 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase ml-1">
+                  New
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -422,32 +446,50 @@ export default function ProfileModal({
           </form>
         )}
 
-        {/* Tab 3: Security & Password Change */}
+        {/* Tab 3: Security & Password Setup / Change */}
         {activeTab === 'security' && (
           <form onSubmit={handleChangePassword} className="p-6 space-y-4">
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
-              <KeyRound className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-              <div className="text-xs text-amber-950">
-                <span className="font-bold block">Enterprise Password Protection</span>
-                Ensure your password contains at least 8 characters, combining uppercase, lowercase, numbers, and symbols to secure high-value escrow trade authorizations.
+            {!hasExistingPassword ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 text-lg shadow-2xs">
+                  🔑
+                </div>
+                <div className="text-xs text-emerald-950 space-y-1">
+                  <span className="font-extrabold text-sm block text-emerald-900">Set Up Password for Direct Email Login</span>
+                  <p className="text-emerald-800 leading-relaxed">
+                    You logged in via Google (<strong>{currentUser?.email}</strong>). By creating a password below, you can sign in directly using your email and password at any time without needing Google.
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+                <KeyRound className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-950">
+                  <span className="font-bold block">Enterprise Password Protection</span>
+                  Ensure your password contains at least 8 characters, combining uppercase, lowercase, numbers, and symbols to secure high-value escrow trade authorizations.
+                </div>
+              </div>
+            )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Current Password</label>
-              <input
-                type="password"
-                required
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter your current password"
-                className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-              />
-            </div>
+            {hasExistingPassword && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Current Password</label>
+                <input
+                  type="password"
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter your current password"
+                  className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">New Password</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {hasExistingPassword ? 'New Password' : 'Create Account Password'}
+                </label>
                 <input
                   type="password"
                   required
@@ -459,13 +501,15 @@ export default function ProfileModal({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Confirm New Password</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {hasExistingPassword ? 'Confirm New Password' : 'Confirm Password'}
+                </label>
                 <input
                   type="password"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Repeat new password"
+                  placeholder="Repeat password"
                   className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
               </div>
@@ -475,10 +519,20 @@ export default function ProfileModal({
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-xs transition shadow-md disabled:opacity-50"
+                className={`flex items-center gap-2 font-bold px-6 py-2.5 rounded-xl text-xs transition shadow-md disabled:opacity-50 cursor-pointer ${
+                  !hasExistingPassword 
+                    ? 'bg-emerald-700 hover:bg-emerald-800 text-white' 
+                    : 'bg-amber-500 hover:bg-amber-600 text-slate-950'
+                }`}
               >
                 <Lock className="w-4 h-4" />
-                <span>{loading ? 'Updating Password...' : 'Change Password'}</span>
+                <span>
+                  {loading 
+                    ? 'Saving Password...' 
+                    : !hasExistingPassword 
+                    ? 'Set Account Password' 
+                    : 'Change Password'}
+                </span>
               </button>
             </div>
           </form>
