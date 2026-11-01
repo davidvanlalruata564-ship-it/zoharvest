@@ -132,4 +132,5 @@ Use the top-right header dropdown to toggle between interactive user profiles:
 - **🛡️ Platform Admin:** *ZOHARVEST Compliance & Operations* (Audit escrow ledger, approve KYC documents, analyze district volumes).
 #   z o h a r v e s t  
  #   z o h a r v e s t  
+ #   z o h a r v e s t  
  
