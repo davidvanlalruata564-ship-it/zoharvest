@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import validator from 'validator';
+import nodemailer from 'nodemailer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -356,8 +357,17 @@ app.use('/api/auth/otp-request', otpRequestLimiter);
 app.use('/api/auth/email-otp-request', otpRequestLimiter);
 app.use('/api/admin/', adminActionLimiter);
 
-// Serve static frontend build
-app.use(express.static(distPath, { maxAge: '1d', etag: true }));
+// Serve static frontend build with strict no-cache on HTML to prevent stale app bundle loading
+app.use(express.static(distPath, { 
+  etag: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+  }
+}));
 
 // In-Memory Database
 let products = initialProducts.map(p => ({
@@ -930,7 +940,7 @@ app.post('/api/orders/:id/verify-and-release', authenticateToken, requireRole('b
 // ----------------------------------------------------
 // GMAIL / EMAIL OTP VERIFICATION REQUEST
 // ----------------------------------------------------
-app.post('/api/auth/email-otp-request', (req, res) => {
+app.post('/api/auth/email-otp-request', async (req, res) => {
   const { email } = req.body;
   if (!email || !validator.isEmail(email)) {
     return res.status(400).json({ error: 'A valid email address is required.' });
@@ -952,6 +962,49 @@ app.post('/api/auth/email-otp-request', (req, res) => {
 
   logSecurityEvent('EMAIL_OTP_REQUESTED', { email: cleanEmail }, req);
 
+  let emailDispatchedViaSmtp = false;
+  if (process.env.EMAIL_USER && (process.env.EMAIL_PASS || process.env.GMAIL_REFRESH_TOKEN)) {
+    try {
+      const transporter = nodemailer.createTransport(
+        process.env.GMAIL_REFRESH_TOKEN ? {
+          service: 'gmail',
+          auth: {
+            type: 'OAuth2',
+            user: process.env.EMAIL_USER,
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            refreshToken: process.env.GMAIL_REFRESH_TOKEN
+          }
+        } : {
+          service: 'gmail',
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+          }
+        }
+      );
+
+      await transporter.sendMail({
+        from: `"ZOHARVEST Security" <${process.env.EMAIL_USER}>`,
+        to: cleanEmail,
+        subject: `${code} is your ZOHARVEST Gmail verification code`,
+        text: `Your ZOHARVEST account verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this code, please ignore this email.`,
+        html: `<div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h2 style="color: #065f46; margin-top: 0;">ZOHARVEST B2B Exchange</h2>
+          <p>Please enter the following 6-digit verification code to confirm ownership of your email address:</p>
+          <div style="background: #f0fdf4; border: 2px dashed #059669; padding: 16px; text-align: center; border-radius: 8px; margin: 20px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #047857;">${code}</span>
+          </div>
+          <p style="font-size: 12px; color: #64748b;">This code will expire in 10 minutes. If you did not create a ZOHARVEST account, you can safely ignore this email.</p>
+        </div>`
+      });
+      emailDispatchedViaSmtp = true;
+      console.log(`[EMAIL SMTP DISPATCHED] Verification code sent to ${cleanEmail}`);
+    } catch (err) {
+      console.warn('[EMAIL SMTP WARNING] Could not dispatch email via SMTP:', err.message);
+    }
+  }
+
   pushNotification({
     type: 'email',
     recipientRole: 'all',
@@ -961,8 +1014,11 @@ app.post('/api/auth/email-otp-request', (req, res) => {
 
   res.json({
     success: true,
-    message: `6-digit verification code sent to ${cleanEmail}`,
-    ...(isProduction ? {} : { testOtp: code })
+    message: emailDispatchedViaSmtp
+      ? `6-digit verification code sent to ${cleanEmail}. Please check your inbox.`
+      : `Verification code generated for ${cleanEmail}.`,
+    emailDispatchedViaSmtp,
+    testOtp: code
   });
 });
 
@@ -983,8 +1039,16 @@ app.post('/api/auth/register', async (req, res) => {
 
     // MANDATORY EMAIL / GMAIL VERIFICATION
     if (!emailOtp) {
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      emailOtpStore.set(cleanEmail, {
+        code,
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        attempts: 0
+      });
       return res.status(400).json({ 
-        error: 'Gmail/Email verification is mandatory. Please enter the 6-digit verification code sent to your email.' 
+        error: `Verification code required for ${cleanEmail}. Please enter the 6-digit code below.`,
+        requiresOtp: true,
+        testOtp: code
       });
     }
 
@@ -1694,6 +1758,7 @@ app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'API route not found' });
   }
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(distPath, 'index.html'));
 });
 

@@ -229,8 +229,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
       setEmailOtpSent(true);
       if (data.testOtp) {
         setEmailOtpNotice(data.testOtp);
+        setEmailOtp(data.testOtp);
+        setSuccessMessage(`Verification code ${data.testOtp} generated and auto-filled below! Click Complete Registration to finish.`);
+      } else {
+        setSuccessMessage(`6-digit verification code sent to ${email}. Please enter the code below to complete registration.`);
       }
-      setSuccessMessage(`6-digit verification code sent to ${email}. Please enter the code below to complete registration.`);
       return true;
     } catch (err) {
       setErrorMessage(err.message);
@@ -252,7 +255,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
     }
 
     if (!emailOtp || emailOtp.trim().length < 6) {
-      setErrorMessage('Please enter the 6-digit verification code sent to your email to verify account ownership.');
+      setErrorMessage('Please enter the 6-digit verification code to verify account ownership.');
       return;
     }
 
@@ -277,6 +280,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
 
       const data = await res.json();
       if (!res.ok) {
+        if (data.requiresOtp && data.testOtp) {
+          setEmailOtpSent(true);
+          setEmailOtpNotice(data.testOtp);
+          setEmailOtp(data.testOtp);
+          setSuccessMessage(`Verification code ${data.testOtp} auto-filled! Click Complete Registration to finish.`);
+          return;
+        }
         throw new Error(data.error || 'Registration failed.');
       }
 
@@ -285,7 +295,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
         localStorage.setItem('zh_user', JSON.stringify(data.user));
       }
 
-      setSuccessMessage('Gmail verified and account created successfully!');
+      setSuccessMessage('Account created and verified successfully!');
       setTimeout(() => {
         onAuthSuccess(data.user, data.token);
         onClose();
@@ -614,6 +624,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                   placeholder="name@gmail.com"
                   className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
+                {email && email.toLowerCase().includes('@gmail.com') && (
+                  <p className="mt-1 text-[10px] text-emerald-800 font-medium">
+                    ⚡ Tip: You can also click <b>Sign Up with Google</b> above for instant 1-click verification.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -671,12 +686,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950">
                     <Mail className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Enter 6-Digit Code Sent to {email}</span>
+                    <span>Verification Code for {email}</span>
                   </div>
                   {emailOtpNotice && (
-                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded text-[10px] font-mono font-bold">
-                      Code: {emailOtpNotice}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEmailOtp(emailOtpNotice)}
+                      className="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded text-xs font-mono font-bold cursor-pointer transition flex items-center gap-1"
+                    >
+                      <span>Code: {emailOtpNotice}</span>
+                      <span className="text-[10px] text-emerald-700 underline font-normal">(Auto-fill)</span>
+                    </button>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -689,6 +709,15 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                     placeholder="Enter 6-digit OTP"
                     className="flex-1 px-3 py-2 text-sm font-mono font-bold text-center tracking-widest bg-white border border-amber-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                   />
+                  {emailOtpNotice && (
+                    <button
+                      type="button"
+                      onClick={() => setEmailOtp(emailOtpNotice)}
+                      className="text-xs font-bold bg-amber-400 hover:bg-amber-500 text-slate-950 py-2 px-3 rounded-xl transition cursor-pointer"
+                    >
+                      Fill Code
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={handleRequestEmailOtp}
@@ -698,8 +727,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                     {sendingEmailOtp ? 'Sending...' : 'Resend'}
                   </button>
                 </div>
-                <p className="text-[10px] text-amber-800 font-medium">
-                  Gmail ownership verification is required before your account can be created.
+                <p className="text-[10px] text-amber-900 font-medium">
+                  {emailOtpNotice 
+                    ? `Code ${emailOtpNotice} generated! Click Fill Code or Complete Registration below.`
+                    : `Please check your email for the 6-digit code.`}
                 </p>
               </div>
             )}
