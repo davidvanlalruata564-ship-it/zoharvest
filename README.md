@@ -130,3 +130,5 @@ Use the top-right header dropdown to toggle between interactive user profiles:
 - **👨‍🌾 Farmer / FPO Producer:** *Champhai High-Altitude Organic FPO* (Gross earnings, active escrow, dispatch action, publish new commodities).
 - **🏢 Wholesale Buyer:** *Spices India Wholesale Corp* (Submit RFQs, deposit to escrow, inspect delivery, release payments).
 - **🛡️ Platform Admin:** *ZOHARVEST Compliance & Operations* (Audit escrow ledger, approve KYC documents, analyze district volumes).
+#   z o h a r v e s t  
+ 
