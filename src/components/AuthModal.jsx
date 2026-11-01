@@ -104,6 +104,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
           client_id: GOOGLE_CLIENT_ID,
           callback: handleGoogleCredentialResponse,
           auto_select: false,
+          itp_support: true,
         });
         window.google.accounts.id.prompt();
       } catch (e) {
@@ -125,6 +126,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
             callback: handleGoogleCredentialResponse,
             auto_select: false,
             cancel_on_tap_outside: true,
+            itp_support: true,
           });
 
           const loginContainer = document.getElementById('google-btn-login');
