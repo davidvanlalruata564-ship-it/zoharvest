@@ -60,6 +60,7 @@ export default function App() {
   const [isNewListingOpen, setIsNewListingOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [viewingSellerId, setViewingSellerId] = useState(null);
+  const [viewingProfileInitialTab, setViewingProfileInitialTab] = useState('posts');
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -68,6 +69,13 @@ export default function App() {
   const handleOpenProfile = (tab = 'general') => {
     setProfileInitialTab(tab);
     setIsProfileOpen(true);
+  };
+
+  const handleOpenUserProfile = (sellerId, preferredTab = 'posts') => {
+    const targetId = sellerId || currentUser?.id || currentUser?.organization || currentUser?.name;
+    if (!targetId) return;
+    setViewingSellerId(targetId);
+    setViewingProfileInitialTab(preferredTab);
   };
   const [authToken, setAuthToken] = useState(() => localStorage.getItem('zh_token') || null);
   const [authenticatedUser, setAuthenticatedUser] = useState(() => {
@@ -602,7 +610,7 @@ export default function App() {
         authenticatedUser={authenticatedUser}
         onOpenAuthModal={() => setIsAuthOpen(true)}
         onOpenProfile={handleOpenProfile}
-        onOpenUserProfile={(sellerId) => setViewingSellerId(sellerId)}
+        onOpenUserProfile={handleOpenUserProfile}
         onLogout={handleLogout}
       />
 
@@ -632,7 +640,7 @@ export default function App() {
               setSelectedGrade={setSelectedGrade}
               onOpenRFQModal={(p) => setRfqProduct(p)}
               onOpenProductDetail={(p) => setSelectedProductDetail(p)}
-              onOpenUserProfile={(sellerId) => setViewingSellerId(sellerId)}
+              onOpenUserProfile={handleOpenUserProfile}
               onEditProduct={(p) => {
                 setEditingProduct(p);
                 setIsNewListingOpen(true);
@@ -707,7 +715,7 @@ export default function App() {
                     setIsNewListingOpen(true);
                   }}
                   onOpenProfile={handleOpenProfile}
-                  onOpenPublicProfile={(sellerId) => setViewingSellerId(sellerId)}
+                  onOpenPublicProfile={handleOpenUserProfile}
                   onUpdateProduct={handleUpdateProduct}
                   onDeleteProduct={handleDeleteProduct}
                   onNavigateTab={(tab) => setActiveTab(tab)}
@@ -804,7 +812,7 @@ export default function App() {
         <ProductDetailModal
           product={selectedProductDetail}
           onClose={() => setSelectedProductDetail(null)}
-          onOpenUserProfile={(sellerId) => setViewingSellerId(sellerId)}
+          onOpenUserProfile={handleOpenUserProfile}
           currentUser={currentUser}
           onEditProduct={(p) => {
             setSelectedProductDetail(null);
@@ -824,13 +832,20 @@ export default function App() {
           products={products}
           onSelectProduct={(p) => setSelectedProductDetail(p)}
           currentUser={currentUser}
-          onOpenEditProfile={() => {
+          initialTab={viewingProfileInitialTab}
+          onOpenEditProfile={(tab = 'general') => {
             setViewingSellerId(null);
-            setIsProfileOpen(true);
+            handleOpenProfile(tab);
           }}
           onEditProduct={(p) => {
             setViewingSellerId(null);
             setEditingProduct(p);
+            setIsNewListingOpen(true);
+          }}
+          onDeleteProduct={handleDeleteProduct}
+          onOpenNewListing={() => {
+            setViewingSellerId(null);
+            setEditingProduct(null);
             setIsNewListingOpen(true);
           }}
         />
@@ -907,7 +922,7 @@ export default function App() {
         initialTab={profileInitialTab}
         onViewPublicProfile={(sellerId) => {
           setIsProfileOpen(false);
-          setViewingSellerId(sellerId);
+          handleOpenUserProfile(sellerId);
         }}
         t={t}
       />
