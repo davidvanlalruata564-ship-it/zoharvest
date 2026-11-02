@@ -169,10 +169,10 @@ export default function AdminVerificationHub({
             </span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-            Admin Verification & Escrow Hub
+            Admin Verification & Operations Hub
           </h2>
           <p className="text-xs text-slate-400 mt-1 max-w-xl">
-            Governing entity onboarding, managing registered accounts, quarantining non-compliant commodities, and auditing the live database and Escrow ledger.
+            Governing entity onboarding, managing registered accounts, quarantining non-compliant commodities, and auditing the live database.
           </p>
         </div>
 
@@ -761,7 +761,7 @@ export default function AdminVerificationHub({
             </div>
 
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Active Orders & Escrows</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Active Listings & Orders</span>
               <div className="text-2xl font-extrabold text-slate-900 mt-0.5">{orders.length}</div>
               <span className="text-[10px] text-blue-600 font-semibold">
                 {orders.filter(o => o.status === 'Settled').length} Settled
@@ -781,7 +781,7 @@ export default function AdminVerificationHub({
             <Database className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
             <div className="text-xs text-amber-950">
               <span className="font-bold block">Production Database Safety Guidelines</span>
-              All database records (products, users, orders, and RFQs) maintain transactional integrity. Exporting regular JSON backups guarantees zero data loss during cloud infrastructure migrations or Render zero-downtime updates.
+              All database records (products, users) maintain transactional integrity. Exporting regular JSON backups guarantees zero data loss during cloud infrastructure migrations or Render zero-downtime updates.
             </div>
           </div>
         </div>

@@ -6,7 +6,6 @@ import ProductDetailModal from './components/ProductDetailModal';
 import ProfilePage from './components/ProfilePage';
 import MobileBottomNav from './components/MobileBottomNav';
 import AdminVerificationHub from './components/AdminVerificationHub';
-import NotificationsDrawer from './components/NotificationsDrawer';
 import NewListingModal from './components/NewListingModal';
 import AuthModal from './components/AuthModal';
 import ProfileModal from './components/ProfileModal';
@@ -16,10 +15,7 @@ import {
   initialCategories, 
   initialDistricts, 
   initialProducts, 
-  initialRFQs, 
-  initialOrders, 
   initialUsers, 
-  initialNotifications 
 } from '../server/data/seedData';
 
 export default function App() {
@@ -31,10 +27,8 @@ export default function App() {
   const [categories, setCategories] = useState(initialCategories);
   const [districts, setDistricts] = useState(initialDistricts);
   const [products, setProducts] = useState(initialProducts);
-  const [rfqs, setRfqs] = useState(initialRFQs);
-  const [orders, setOrders] = useState(initialOrders);
+  const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState(initialUsers);
-  const [notifications, setNotifications] = useState(initialNotifications);
   const [stats, setStats] = useState(null);
 
   // Filter States
@@ -45,14 +39,10 @@ export default function App() {
 
   // Modals & Drawers
   const [selectedProductDetail, setSelectedProductDetail] = useState(null);
-  const [rfqProduct, setRfqProduct] = useState(null);
-  const [escrowModalOrder, setEscrowModalOrder] = useState(null);
-  const [poModalOrder, setPoModalOrder] = useState(null);
   const [isNewListingOpen, setIsNewListingOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [viewingSellerId, setViewingSellerId] = useState(null);
   const [viewingProfileInitialTab, setViewingProfileInitialTab] = useState('posts');
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileInitialTab, setProfileInitialTab] = useState('general');
@@ -85,7 +75,6 @@ export default function App() {
 
   // Active user: authenticated user session or guest
   const currentUser = authenticatedUser || null;
-  const unreadNotifsCount = notifications.filter(n => !n.read).length;
 
   // Handle Authentication Success
   const handleAuthSuccess = (user, token) => {
@@ -134,12 +123,6 @@ export default function App() {
         if (data.products) setProducts(data.products);
       }
 
-      const rfqRes = await fetch('/api/rfqs');
-      if (rfqRes.ok) {
-        const data = await rfqRes.json();
-        if (data.rfqs) setRfqs(data.rfqs);
-      }
-
       const orderRes = await fetch('/api/orders');
       if (orderRes.ok) {
         const data = await orderRes.json();
@@ -156,12 +139,6 @@ export default function App() {
       if (statsRes.ok) {
         const data = await statsRes.json();
         setStats(data);
-      }
-
-      const notifRes = await fetch('/api/notifications');
-      if (notifRes.ok) {
-        const data = await notifRes.json();
-        if (data.notifications) setNotifications(data.notifications);
       }
     } catch (err) {
       console.log('Using seeded in-memory state');
@@ -201,179 +178,6 @@ export default function App() {
       headers['Authorization'] = `Bearer ${authToken}`;
     }
     return headers;
-  };
-
-  // Handler: Submit new RFQ
-  const handleCreateRFQ = async (rfqData) => {
-    if (!authenticatedUser) {
-      setIsAuthOpen(true);
-      return;
-    }
-    try {
-      const res = await fetch('/api/rfqs', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(rfqData)
-      });
-
-      if (res.ok) {
-        const newRFQ = await res.json();
-        setRfqs(prev => [newRFQ, ...prev]);
-        setActiveTab('rfqs');
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to submit RFQ');
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Handler: Counter-Offer on RFQ
-  const handleCounterOffer = async (rfqId, counterPrice, message) => {
-    if (!authenticatedUser) {
-      setIsAuthOpen(true);
-      return;
-    }
-    try {
-      const res = await fetch(`/api/rfqs/${rfqId}/counter`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ counterPrice, message })
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setRfqs(prev => prev.map(r => r.id === rfqId ? updated : r));
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Counter-offer rejected');
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Handler: Accept RFQ
-  const handleAcceptRFQ = async (rfqId) => {
-    if (!authenticatedUser) {
-      setIsAuthOpen(true);
-      return;
-    }
-    try {
-      const res = await fetch(`/api/rfqs/${rfqId}/accept`, {
-        method: 'PUT',
-        headers: getAuthHeaders()
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setRfqs(prev => prev.map(r => r.id === rfqId ? updated : r));
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Could not accept RFQ');
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Handler: Generate PO from RFQ
-  const handleGeneratePO = async (rfqId) => {
-    if (!authenticatedUser) {
-      setIsAuthOpen(true);
-      return;
-    }
-    try {
-      const res = await fetch('/api/orders/generate-po', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ rfqId })
-      });
-      if (res.ok) {
-        const newOrder = await res.json();
-        setOrders(prev => [newOrder, ...prev]);
-        setRfqs(prev => prev.map(r => r.id === rfqId ? { ...r, status: 'PO_Generated' } : r));
-        setActiveTab('orders');
-        setEscrowModalOrder(newOrder); // Automatically open Escrow deposit checkout
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Failed to generate PO');
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Handler: Escrow Deposit
-  const handleEscrowDepositSuccess = async (orderId, paymentMethod) => {
-    if (!authenticatedUser) {
-      setIsAuthOpen(true);
-      return;
-    }
-    try {
-      const res = await fetch('/api/escrow/deposit', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ orderId, paymentMethod })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(prev => prev.map(o => o.id === orderId ? data.order : o));
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Escrow deposit failed');
-      }
-      setEscrowModalOrder(null);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Handler: Seller Dispatches Consignment
-  const handleDispatchOrder = async (orderId, carrier, trackingNumber) => {
-    if (!authenticatedUser) {
-      setIsAuthOpen(true);
-      return;
-    }
-    try {
-      const res = await fetch(`/api/orders/${orderId}/dispatch`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ carrier, trackingNumber })
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setOrders(prev => prev.map(o => o.id === orderId ? updated : o));
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Dispatch submission rejected');
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Handler: Buyer Verifies & Releases Escrow Payout
-  const handleVerifyAndRelease = async (orderId, qualityScore, inspectionNotes) => {
-    if (!authenticatedUser) {
-      setIsAuthOpen(true);
-      return;
-    }
-    try {
-      const res = await fetch(`/api/orders/${orderId}/verify-and-release`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ qualityScore, inspectionNotes })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(prev => prev.map(o => o.id === orderId ? data.order : o));
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Verification release failed');
-      }
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   // Handler: New Commodity Listing by Farmer
@@ -576,16 +380,6 @@ export default function App() {
     setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
   };
 
-  // Handler: Mark all notifications read
-  const handleMarkNotificationsRead = async () => {
-    try {
-      await fetch('/api/notifications/mark-read', { method: 'POST' });
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    } catch (e) {
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF9] font-sans selection:bg-emerald-700 selection:text-white">
       
@@ -598,9 +392,6 @@ export default function App() {
         setCurrentRole={setCurrentRole}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        notifications={notifications}
-        setIsNotifOpen={setIsNotifOpen}
-        unreadCount={unreadNotifsCount}
         currentUser={currentUser}
         authenticatedUser={authenticatedUser}
         onOpenAuthModal={() => setIsAuthOpen(true)}
@@ -766,14 +557,6 @@ export default function App() {
           currentLang={currentLang}
         />
       )}
-
-      <NotificationsDrawer
-        isOpen={isNotifOpen}
-        onClose={() => setIsNotifOpen(false)}
-        notifications={notifications}
-        onMarkAllRead={handleMarkNotificationsRead}
-        t={t}
-      />
 
       <AuthModal
         isOpen={isAuthOpen}

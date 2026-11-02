@@ -9,31 +9,22 @@ import {
   MessageCircle, 
   Mail, 
   Grid, 
-  FolderHeart, 
   CreditCard, 
   PlusCircle, 
   Edit3, 
   Trash2, 
-  ShieldAlert, 
   ExternalLink, 
   Instagram, 
   Globe, 
   Copy, 
   Check, 
   MoreVertical, 
-  UserCheck, 
-  UserPlus,
   Sparkles,
   BarChart3,
-  AlertCircle,
   Camera,
-  Upload,
   Loader2
 } from 'lucide-react';
 
-import NetworkModal from './NetworkModal';
-import ContactCardModal from './ContactCardModal';
-import BlockedUsersModal from './BlockedUsersModal';
 import { compressImage, formatBytes } from '../utils/imageCompressor';
 
 export default function ProfilePage({
@@ -50,26 +41,31 @@ export default function ProfilePage({
 }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('posts'); // 'posts' | 'galleries' | 'payout'
+  const [activeTab, setActiveTab] = useState('posts'); // 'posts' | 'payout'
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [copiedKey, setCopiedKey] = useState(null);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [followingCount, setFollowingCount] = useState(0);
-
-  // Sub-Modals
-  const [isNetworkOpen, setIsNetworkOpen] = useState(false);
-  const [networkTab, setNetworkTab] = useState('followers');
-  const [isContactCardOpen, setIsContactCardOpen] = useState(false);
-  const [isBlockedModalOpen, setIsBlockedModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef(null);
 
-  // Handle client-side profile picture selection & downscaling
+  // Target User ID (either passed or logged-in user)
+  const targetId = profileUserId || currentUser?.id;
+
+  // Determine if viewing own profile
+  const isOwnProfile = Boolean(
+    currentUser && targetId && (
+      String(currentUser.id) === String(targetId) ||
+      (currentUser.organization && currentUser.organization.toLowerCase() === String(targetId).toLowerCase()) ||
+      (currentUser.name && currentUser.name.toLowerCase() === String(targetId).toLowerCase()) ||
+      (currentUser.email && currentUser.email.toLowerCase() === String(targetId).toLowerCase()) ||
+      targetId === 'self' ||
+      targetId === 'me'
+    )
+  );
+
+  // Handle client-side profile picture selection & auto-downscaling
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -81,7 +77,7 @@ export default function ProfilePage({
     }
 
     setUploadingAvatar(true);
-    setToastMessage('Downscaling & optimizing photo...');
+    setToastMessage('Optimizing & downscaling photo...');
 
     try {
       const result = await compressImage(file, {
@@ -112,7 +108,7 @@ export default function ProfilePage({
           u.avatarUrl = result.dataUrl;
           localStorage.setItem('zh_user', JSON.stringify(u));
         }
-        setToastMessage(`Profile picture updated! Compressed ${formatBytes(result.originalSize)} ➔ ${formatBytes(result.compressedSize)} (${result.savedPercent}% saved)`);
+        setToastMessage(`Profile photo updated! (${formatBytes(result.originalSize)} ➔ ${formatBytes(result.compressedSize)})`);
       } else {
         const err = await res.json();
         setToastMessage(err.error || 'Failed to update avatar');
@@ -125,21 +121,6 @@ export default function ProfilePage({
       setTimeout(() => setToastMessage(''), 4500);
     }
   };
-
-  // Target User ID (either passed or logged-in user)
-  const targetId = profileUserId || currentUser?.id;
-
-  // Determine if viewing own profile
-  const isOwnProfile = Boolean(
-    currentUser && targetId && (
-      String(currentUser.id) === String(targetId) ||
-      (currentUser.organization && currentUser.organization.toLowerCase() === String(targetId).toLowerCase()) ||
-      (currentUser.name && currentUser.name.toLowerCase() === String(targetId).toLowerCase()) ||
-      (currentUser.email && currentUser.email.toLowerCase() === String(targetId).toLowerCase()) ||
-      targetId === 'self' ||
-      targetId === 'me'
-    )
-  );
 
   useEffect(() => {
     let mounted = true;
@@ -173,14 +154,6 @@ export default function ProfilePage({
             } else {
               setProfile(p);
             }
-            setFollowersCount(p.stats?.followersCount || (p.followers ? p.followers.length : 120));
-            setFollowingCount(p.stats?.followingCount || (p.following ? p.following.length : 8));
-            if (currentUser && p.followers) {
-              setIsFollowing(p.followers.includes(currentUser.id));
-            }
-            if (currentUser && currentUser.blockedUsers) {
-              setIsBlocked(currentUser.blockedUsers.includes(p.id));
-            }
           }
         }
       } catch (e) {
@@ -201,54 +174,12 @@ export default function ProfilePage({
     setTimeout(() => setCopiedKey(null), 2500);
   };
 
-  // Follow / Unfollow
-  const handleFollowToggle = async () => {
-    if (!currentUser) return;
-    const nextState = !isFollowing;
-    setIsFollowing(nextState);
-    setFollowersCount(prev => nextState ? prev + 1 : Math.max(0, prev - 1));
-
-    const token = localStorage.getItem('zh_token');
-    try {
-      const res = await fetch(`/api/users/${profile.id}/follow`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setFollowersCount(data.followersCount);
-      }
-    } catch (err) {
-      // Revert
-      setIsFollowing(!nextState);
-    }
-  };
-
-  // Block / Unblock User
-  const handleBlockToggle = async () => {
-    if (!currentUser || !profile) return;
-    const confirmed = window.confirm(
-      isBlocked 
-        ? `Unblock ${profile.name}? You will be able to see their posts and profile again.` 
-        : `Block ${profile.name}? Their posts will be hidden from your feed and they will not be able to interact with your listings.`
-    );
-    if (!confirmed) return;
-
-    const token = localStorage.getItem('zh_token');
-    try {
-      const res = await fetch(`/api/users/${profile.id}/block`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setIsBlocked(data.isBlocked);
-        setMenuOpen(false);
-        setToastMessage(data.isBlocked ? 'Account blocked.' : 'Account unblocked.');
-        setTimeout(() => setToastMessage(''), 3000);
-      }
-    } catch (err) {
-      alert('Failed to update block status.');
+  const handleShareProfile = () => {
+    const shareUrl = window.location.href;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl);
+      setToastMessage('Profile link copied to clipboard!');
+      setTimeout(() => setToastMessage(''), 3000);
     }
   };
 
@@ -269,7 +200,7 @@ export default function ProfilePage({
     ? allUserPosts
     : allUserPosts.filter(p => p.category === selectedCategory);
 
-  // Quota for own profile
+  // Quotas for own profile: 10 photo posts, 30 text posts
   const photoListings = allUserPosts.filter(p => 
     Array.isArray(p.images) && p.images.length > 0 && p.images.some(img => img && img.trim() !== '')
   );
@@ -283,19 +214,19 @@ export default function ProfilePage({
   const textLimitReached = textListings.length >= MAX_TEXT;
   const totalLimitReached = photoLimitReached && textLimitReached;
 
-  // Delete post
+  // Delete post with immediate quota release
   const handleDeletePost = async (post, e) => {
     if (e) e.stopPropagation();
     if (!onDeleteProduct) return;
     const confirmed = window.confirm(
-      `Delete listing "${post.name}" from your inventory?\n\nThis will remove the post from the marketplace and immediately release 1 quota slot back to your account.`
+      `Delete listing "${post.name}" from your posts?\n\nThis will remove the listing and immediately release 1 quota slot back to your account.`
     );
     if (!confirmed) return;
 
     setDeletingId(post.id);
     try {
       await onDeleteProduct(post.id);
-      setToastMessage(`Listing "${post.name}" deleted. 1 quota slot released!`);
+      setToastMessage(`Listing "${post.name}" deleted. Quota slot released!`);
       setTimeout(() => setToastMessage(''), 3500);
     } catch (err) {
       alert('Failed to delete listing.');
@@ -345,17 +276,17 @@ export default function ProfilePage({
         </div>
 
         <div className="flex items-center gap-2 relative">
-          {/* Share Contact Card button */}
+          {/* Share Profile button */}
           <button
-            onClick={() => setIsContactCardOpen(true)}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer flex items-center gap-1 text-xs font-bold"
-            title="Share Contact Card"
+            onClick={handleShareProfile}
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+            title="Share Profile Link"
           >
-            <Share2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Share Card</span>
+            <Share2 className="w-4 h-4 text-emerald-700" />
+            <span className="hidden sm:inline">Share</span>
           </button>
 
-          {/* Settings / More Menu */}
+          {/* Settings / Options Menu */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="p-2 rounded-xl hover:bg-slate-100 text-slate-700 transition cursor-pointer"
@@ -366,7 +297,7 @@ export default function ProfilePage({
 
           {/* Dropdown Menu */}
           {menuOpen && (
-            <div className="absolute right-0 top-11 z-30 w-52 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 text-xs text-slate-700 animate-in fade-in zoom-in-95">
+            <div className="absolute right-0 top-11 z-30 w-48 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 text-xs text-slate-700 animate-in fade-in zoom-in-95">
               {isOwnProfile ? (
                 <>
                   <button
@@ -374,21 +305,14 @@ export default function ProfilePage({
                     className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 font-semibold"
                   >
                     <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Edit Profile Info</span>
+                    <span>Edit Profile</span>
                   </button>
                   <button
                     onClick={() => { setMenuOpen(false); if (onOpenEditProfile) onOpenEditProfile('payment'); }}
                     className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 font-semibold"
                   >
                     <CreditCard className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Manage GPay & Bank</span>
-                  </button>
-                  <button
-                    onClick={() => { setMenuOpen(false); setIsBlockedModalOpen(true); }}
-                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 font-semibold"
-                  >
-                    <ShieldAlert className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Blocked Accounts</span>
+                    <span>Payment Settings</span>
                   </button>
                   <div className="border-t border-slate-100 my-1"></div>
                   {onLogout && (
@@ -401,22 +325,13 @@ export default function ProfilePage({
                   )}
                 </>
               ) : (
-                <>
-                  <button
-                    onClick={() => { setMenuOpen(false); setIsContactCardOpen(true); }}
-                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 font-semibold"
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Save Contact Card</span>
-                  </button>
-                  <button
-                    onClick={handleBlockToggle}
-                    className="w-full px-4 py-2 text-left hover:bg-rose-50 text-rose-700 flex items-center gap-2 font-bold"
-                  >
-                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
-                    <span>{isBlocked ? 'Unblock User' : 'Block This Account'}</span>
-                  </button>
-                </>
+                <button
+                  onClick={() => { setMenuOpen(false); handleShareProfile(); }}
+                  className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 font-semibold"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Copy Profile Link</span>
+                </button>
               )}
             </div>
           )}
@@ -430,24 +345,8 @@ export default function ProfilePage({
         </div>
       )}
 
-      {/* Blocked Account Notice */}
-      {isBlocked && (
-        <div className="bg-rose-50 border border-rose-300 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs text-rose-950">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>You have blocked this account. Their posts and updates are hidden from your feed.</span>
-          </div>
-          <button
-            onClick={handleBlockToggle}
-            className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs shrink-0 cursor-pointer"
-          >
-            Unblock
-          </button>
-        </div>
-      )}
-
-      {/* Profile Bio & Stats Header Card */}
-      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-sm space-y-4">
+      {/* Profile Bio & Showcase Header Card */}
+      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
           
@@ -471,7 +370,7 @@ export default function ProfilePage({
                   onClick={() => avatarInputRef.current?.click()}
                   disabled={uploadingAvatar}
                   className="absolute bottom-0 right-0 p-1.5 rounded-full bg-slate-900 text-amber-300 hover:bg-slate-800 border-2 border-white shadow-md transition cursor-pointer group"
-                  title="Change profile picture (auto-downscaled to save space)"
+                  title="Change profile picture (auto-compressed to save space)"
                 >
                   {uploadingAvatar ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
@@ -490,7 +389,7 @@ export default function ProfilePage({
             )}
           </div>
 
-          {/* Profile Name & Primary Action */}
+          {/* Profile Name & Identity */}
           <div className="flex-1 space-y-2.5 w-full">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -515,52 +414,39 @@ export default function ProfilePage({
                   </button>
                 ) : (
                   <button
-                    onClick={handleFollowToggle}
-                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-xs ${
-                      isFollowing
-                        ? 'bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-200'
-                        : 'bg-emerald-700 hover:bg-emerald-800 text-white'
-                    }`}
+                    onClick={() => setActiveTab('payout')}
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-500 text-slate-950 transition cursor-pointer flex items-center gap-1.5 shadow-xs"
                   >
-                    {isFollowing ? 'Following ✓' : 'Follow'}
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>GPay & Payment</span>
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Interactive Stats Counters (Posts / Followers / Following) */}
+            {/* Quick Metrics (Listings & Verification) */}
             <div className="flex items-center gap-6 text-xs pt-1 border-y border-slate-100 py-2">
               <div>
                 <span className="font-extrabold text-slate-900 block text-sm">{allUserPosts.length}</span>
                 <span className="text-slate-500 text-[11px]">Listings</span>
               </div>
-              
-              {/* Followers Counter (Clickable to open Network) */}
-              <button
-                onClick={() => { setNetworkTab('followers'); setIsNetworkOpen(true); }}
-                className="text-left cursor-pointer group"
-              >
-                <span className="font-extrabold text-slate-900 block text-sm group-hover:text-emerald-700 transition">
-                  {followersCount}
+              <div>
+                <span className="font-extrabold text-emerald-700 block text-sm">
+                  {profile?.isVerified ? 'Verified' : 'Active'}
                 </span>
-                <span className="text-slate-500 text-[11px] group-hover:underline">Followers</span>
-              </button>
-
-              {/* Following Counter (Clickable to open Network) */}
-              <button
-                onClick={() => { setNetworkTab('following'); setIsNetworkOpen(true); }}
-                className="text-left cursor-pointer group"
-              >
-                <span className="font-extrabold text-slate-900 block text-sm group-hover:text-emerald-700 transition">
-                  {followingCount}
+                <span className="text-slate-500 text-[11px]">Status</span>
+              </div>
+              <div>
+                <span className="font-extrabold text-slate-900 block text-sm">
+                  {profile?.district || 'Mizoram'}
                 </span>
-                <span className="text-slate-500 text-[11px] group-hover:underline">Following</span>
-              </button>
+                <span className="text-slate-500 text-[11px]">Region</span>
+              </div>
             </div>
 
             {/* Bio Description */}
             <p className="text-xs text-slate-700 leading-relaxed font-normal">
-              {profile?.bio}
+              {profile?.bio || 'Local grower and producer based in Mizoram.'}
             </p>
 
             {/* Social Links Chips */}
@@ -591,7 +477,7 @@ export default function ProfilePage({
               </div>
             )}
 
-            {/* ACTION ROW */}
+            {/* CONTACT SHOWCASE ROW */}
             {isOwnProfile ? (
               <div className="flex flex-wrap items-center gap-2 pt-1 w-full">
                 <button
@@ -613,14 +499,6 @@ export default function ProfilePage({
                 </button>
 
                 <button
-                  onClick={() => setIsContactCardOpen(true)}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Share My Contact</span>
-                </button>
-
-                <button
                   onClick={() => setActiveTab('payout')}
                   className="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-300/80"
                 >
@@ -632,7 +510,7 @@ export default function ProfilePage({
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 {cleanPhone && (
                   <a
-                    href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hello ${profile?.name || profile?.organization}, I found your produce on ZOHARVEST and would like to place an order.`)}`}
+                    href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hello ${profile?.name || profile?.organization}, I found your produce listing on ZOHARVEST and would like to contact you.`)}`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex-1 min-w-[130px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
@@ -652,13 +530,15 @@ export default function ProfilePage({
                   </a>
                 )}
 
-                <button
-                  onClick={() => setIsContactCardOpen(true)}
-                  className="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-300"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Save Contact</span>
-                </button>
+                {profile?.email && (
+                  <a
+                    href={`mailto:${profile.email}`}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Email</span>
+                  </a>
+                )}
               </div>
             )}
 
@@ -671,10 +551,10 @@ export default function ProfilePage({
             <div className="flex items-center justify-between text-xs">
               <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
                 <BarChart3 className="w-4 h-4 text-emerald-700" />
-                <span>Your Produce Inventory & Quota</span>
+                <span>Your Produce Listings & Quota</span>
               </span>
               <span className="text-[11px] text-slate-500 font-medium">
-                Post & Inventory are unified • Deleting releases quota
+                Unified Posts & Inventory • Deleting releases quota
               </span>
             </div>
 
@@ -777,8 +657,8 @@ export default function ProfilePage({
               <div className="font-bold text-sm text-slate-700">No Listings in this Category</div>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
                 {isOwnProfile
-                  ? 'You have not added any harvest inventory under this highlight yet. Click below to add a post.'
-                  : 'This member does not have active listings under this highlight.'}
+                  ? 'You have not added any produce posts under this category yet. Click below to add a post.'
+                  : 'This member does not have active listings under this category.'}
               </p>
               {isOwnProfile && (
                 <button
@@ -907,10 +787,10 @@ export default function ProfilePage({
           <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 text-xs text-amber-950 space-y-1">
             <div className="font-extrabold flex items-center gap-1.5 text-amber-900">
               <Sparkles className="w-4 h-4 text-amber-700" />
-              <span>Direct P2P Settlement (0% Platform Cut)</span>
+              <span>Direct Payment Details</span>
             </div>
             <p className="leading-relaxed text-amber-900/90 text-[11px]">
-              ZOHARVEST does not deduct platform commissions or take escrow cuts. Wholesale buyers transfer payments directly to the verified Google Pay or Bank Account shown below.
+              Transfer payments directly to the verified Google Pay, UPI ID, or Bank Account shown below.
             </p>
           </div>
 
@@ -1039,41 +919,6 @@ export default function ProfilePage({
           </div>
 
         </div>
-      )}
-
-      {/* SUB-MODALS */}
-      {isNetworkOpen && (
-        <NetworkModal
-          isOpen={isNetworkOpen}
-          onClose={() => setIsNetworkOpen(false)}
-          userId={profile.id}
-          initialTab={networkTab}
-          currentUser={currentUser}
-          onSelectUser={(uid) => {
-            setIsNetworkOpen(false);
-            if (uid !== targetId && onSelectProduct) {
-              // Navigate to profile of this user
-              window.location.hash = `#profile-${uid}`;
-            }
-          }}
-          onFollowToggle={handleFollowToggle}
-        />
-      )}
-
-      {isContactCardOpen && (
-        <ContactCardModal
-          isOpen={isContactCardOpen}
-          onClose={() => setIsContactCardOpen(false)}
-          profile={profile}
-        />
-      )}
-
-      {isBlockedModalOpen && (
-        <BlockedUsersModal
-          isOpen={isBlockedModalOpen}
-          onClose={() => setIsBlockedModalOpen(false)}
-          onUnblockUser={() => {}}
-        />
       )}
 
     </div>

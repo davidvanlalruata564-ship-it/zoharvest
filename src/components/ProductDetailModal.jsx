@@ -100,7 +100,7 @@ export default function ProductDetailModal({
             </div>
           </div>
 
-          {/* Commodity Details & RFQ Action */}
+          {/* Produce Details & Contact */}
           <div className="p-6 md:p-8 flex flex-col justify-between space-y-5">
             <div>
               <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">
@@ -216,7 +216,7 @@ export default function ProductDetailModal({
                     : 'bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-950'
                 }`}
               >
-                <span>{isOwnProduct ? '👤 View Your Public Profile & Showcase' : '👤 View Seller Profile & Instagram Showcase'}</span>
+                <span>{isOwnProduct ? '👤 View Your Profile' : '👤 View Poster Profile'}</span>
                 <span className={isOwnProduct ? 'text-amber-300 font-normal' : 'text-emerald-700 font-normal'}>➜</span>
               </button>
 
@@ -272,7 +272,7 @@ export default function ProductDetailModal({
               )}
 
               <div className="text-[11px] text-slate-400 text-center font-medium">
-                Direct wholesale settlement • 0% platform intermediary commission
+                Direct contact with poster • Verified local listing
               </div>
             </div>
 

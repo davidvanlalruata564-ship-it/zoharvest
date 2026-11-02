@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { 
   Sprout, 
   Globe, 
-  Bell, 
   Store, 
   Menu, 
   X,
@@ -20,9 +19,6 @@ export default function Navbar({
   t, 
   activeTab, 
   setActiveTab,
-  notifications,
-  setIsNotifOpen,
-  unreadCount,
   currentUser,
   authenticatedUser,
   onOpenAuthModal,
@@ -207,20 +203,6 @@ export default function Navbar({
                 <span>Sign In</span>
               </button>
             )}
-
-            {/* Notification Bell */}
-            <button
-              onClick={() => setIsNotifOpen(true)}
-              className="relative p-2.5 rounded-xl bg-stone-100 hover:bg-emerald-50 text-stone-600 hover:text-emerald-900 transition cursor-pointer"
-              title="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-amber-500 text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
 
             {/* Mobile Menu Toggle */}
             <button
