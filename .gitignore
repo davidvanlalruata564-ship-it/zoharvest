@@ -5,6 +5,7 @@ dist
 credentials.json
 uploads/*
 !uploads/.gitkeep
+server/data/persisted_db.json
 scratch
 .DS_Store
 Thumbs.db

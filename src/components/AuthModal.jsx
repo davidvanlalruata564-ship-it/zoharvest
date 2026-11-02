@@ -11,31 +11,17 @@ import {
   Eye, 
   EyeOff, 
   CheckCircle2, 
-  ArrowRight,
-  Sparkles,
-  KeyRound,
-  Smartphone,
-  Send,
-  Check
+  ArrowRight, 
+  Sparkles, 
+  KeyRound, 
+  Check 
 } from 'lucide-react';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '360587275546-930r3jboqt9jed504oa438upknfosgok.apps.googleusercontent.com';
 
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-      <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
-      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-    </svg>
-  );
-}
-
 export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = [], t, currentLang }) {
-  // Mode: 'login' | 'register' | 'phone_otp' | 'forgot_password'
+  // Mode: 'login' | 'register' | 'forgot_password'
   const [mode, setMode] = useState('login');
-  const [registerStep, setRegisterStep] = useState('form'); // 'form' | 'otp'
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -59,16 +45,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
   const [organization, setOrganization] = useState('');
   const [district, setDistrict] = useState(districts[0] || 'Champhai');
   const [address, setAddress] = useState('');
-
-  // Phone OTP states
-  const [otpPhone, setOtpPhone] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-
-  // Email / Gmail OTP verification states
-  const [emailOtp, setEmailOtp] = useState('');
-  const [emailOtpSent, setEmailOtpSent] = useState(false);
-  const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
 
   // Forgot / Set Password states
   const [forgotStep, setForgotStep] = useState('request'); // 'request' | 'verify'
@@ -100,7 +76,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
         body: JSON.stringify({
           credential: response.credential,
           role,
-          district
+          district,
+          phone: phone ? phone.trim() : undefined
         })
       });
 
@@ -114,7 +91,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
         localStorage.setItem('zh_user', JSON.stringify(data.user));
       }
 
-      setSuccessMessage(`Welcome, ${data.user.name}! Verified with Google.`);
+      setSuccessMessage(`Welcome, ${data.user.name}! Logged in with Google.`);
       setTimeout(() => {
         onAuthSuccess(data.user, data.token);
         onClose();
@@ -158,7 +135,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
           }
 
           // Render into Sign Up button container if on register mode
-          if (googleSignUpRef.current && mode === 'register' && registerStep === 'form') {
+          if (googleSignUpRef.current && mode === 'register') {
             googleSignUpRef.current.innerHTML = '';
             window.google.accounts.id.renderButton(googleSignUpRef.current, {
               type: 'standard',
@@ -190,7 +167,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
       clearTimeout(timer);
       clearInterval(interval);
     };
-  }, [isOpen, mode, registerStep, role, district]);
+  }, [isOpen, mode, role, district]);
 
   // 1. Password Login
   const handleLogin = async (e) => {
@@ -223,7 +200,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
       setTimeout(() => {
         onAuthSuccess(data.user, data.token);
         onClose();
-      }, 700);
+      }, 600);
     } catch (err) {
       setErrorMessage(err.message);
     } finally {
@@ -231,9 +208,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
     }
   };
 
-  // 2. Step 1 Submit: Validate details & dispatch Email OTP
-  const handleProceedToOtp = async (e) => {
-    if (e) e.preventDefault();
+  // 2. Direct Registration (No OTP required)
+  const handleRegister = async (e) => {
+    e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
 
@@ -242,7 +219,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
       return;
     }
     if (!phone || phone.trim().length < 8) {
-      setErrorMessage('Please enter a valid phone number for delivery coordination.');
+      setErrorMessage('Please enter a valid phone number for direct WhatsApp & delivery coordination.');
       return;
     }
     if (!email || !email.includes('@') || !email.includes('.')) {
@@ -251,45 +228,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
     }
     if (!isPasswordValid) {
       setErrorMessage('Password must be at least 8 characters long and contain uppercase letters (A-Z), lowercase letters (a-z), and numbers (0-9).');
-      return;
-    }
-
-    setSendingEmailOtp(true);
-
-    try {
-      const res = await fetch('/api/auth/email-otp-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: email.trim().toLowerCase(),
-          phone: phone.trim()
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to dispatch email verification code.');
-      }
-
-      setEmailOtp(''); // Clear input: user must enter code received in email!
-      setEmailOtpSent(true);
-      setRegisterStep('otp'); // Immediately transition to dedicated OTP page
-      setSuccessMessage(data.message || `Verification code sent to ${email}! Please check your email inbox.`);
-    } catch (err) {
-      setErrorMessage(err.message);
-    } finally {
-      setSendingEmailOtp(false);
-    }
-  };
-
-  // 3. Step 2 Submit: Verify Email OTP & Finalize Registration
-  const handleVerifyEmailAndRegister = async (e) => {
-    if (e) e.preventDefault();
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    if (!emailOtp || emailOtp.trim().length < 6) {
-      setErrorMessage('Please enter the 6-digit verification code.');
       return;
     }
 
@@ -305,10 +243,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
           phone: phone.trim(),
           password,
           role,
-          organization: organization ? organization.trim() : (role === 'farmer' ? `${district} Organic Union` : 'Enterprise Buyer Corp'),
+          organization: organization ? organization.trim() : (role === 'farmer' ? `${district} Organic Union` : `${name.trim()}'s Wholesale Enterprise`),
           district,
-          address: address || `${district}, Mizoram`,
-          emailOtp: emailOtp.trim()
+          address: address || `${district}, Mizoram`
         })
       });
 
@@ -322,7 +259,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
         localStorage.setItem('zh_user', JSON.stringify(data.user));
       }
 
-      setSuccessMessage('Account created and email verified successfully!');
+      setSuccessMessage(data.message || 'Account created successfully! Welcome to ZOHARVEST.');
       setTimeout(() => {
         onAuthSuccess(data.user, data.token);
         onClose();
@@ -334,98 +271,33 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
     }
   };
 
-  // 4. Request Phone OTP
-  const handleRequestOtp = async (e) => {
+  // 3. Forgot Password / Set Direct Password: Request Code
+  const handleForgotRequest = async (e) => {
     e.preventDefault();
-    setErrorMessage('');
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/otp-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: otpPhone })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send OTP.');
-      }
-
-      setOtpSent(true);
-      setSuccessMessage(`6-digit code dispatched to ${otpPhone}`);
-    } catch (err) {
-      setErrorMessage(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 5. Verify Phone OTP
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    setErrorMessage('');
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/otp-verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: otpPhone,
-          otp: otpCode,
-          name: name || 'Verified Phone Member',
-          role,
-          district
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'OTP verification failed.');
-      }
-
-      if (data.token) {
-        localStorage.setItem('zh_token', data.token);
-        localStorage.setItem('zh_user', JSON.stringify(data.user));
-      }
-
-      setSuccessMessage('Phone verified successfully!');
-      setTimeout(() => {
-        onAuthSuccess(data.user, data.token);
-        onClose();
-      }, 700);
-    } catch (err) {
-      setErrorMessage(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 6. Forgot / Set Password Request: 6-digit code
-  const handleForgotPasswordRequest = async (emailOverride) => {
-    const targetEmail = (emailOverride || forgotEmail || emailOrPhone).trim().toLowerCase();
-    if (!targetEmail || !targetEmail.includes('@')) {
-      setErrorMessage('Please enter your account email address.');
-      return;
-    }
-    setLoading(true);
     setErrorMessage('');
     setSuccessMessage('');
+
+    if (!forgotEmail || !forgotEmail.includes('@')) {
+      setErrorMessage('Please enter your registered email address.');
+      return;
+    }
+
+    setLoading(true);
+
     try {
       const res = await fetch('/api/auth/forgot-password-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail })
+        body: JSON.stringify({ email: forgotEmail.trim().toLowerCase() })
       });
+
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to send password setup code.');
+        throw new Error(data.error || 'Failed to dispatch verification code.');
       }
-      setForgotEmail(targetEmail);
-      setForgotOtp(''); // Clear input: user must enter code received in email!
+
       setForgotStep('verify');
-      setSuccessMessage(data.message || `Verification code sent to ${targetEmail}. Please check your inbox.`);
+      setSuccessMessage(data.message || `Verification code sent to ${forgotEmail}. Please check your inbox.`);
     } catch (err) {
       setErrorMessage(err.message);
     } finally {
@@ -433,11 +305,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
     }
   };
 
-  // 7. Reset / Save Password with Code
-  const handleResetPasswordSubmit = async (e) => {
-    if (e) e.preventDefault();
+  // 4. Forgot Password: Verify Code & Set New Password
+  const handleForgotVerifyAndSet = async (e) => {
+    e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
+
     if (!forgotOtp || forgotOtp.trim().length < 6) {
       setErrorMessage('Please enter the 6-digit verification code.');
       return;
@@ -450,7 +323,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
       setErrorMessage('Passwords do not match.');
       return;
     }
+
     setLoading(true);
+
     try {
       const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
@@ -461,14 +336,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
           newPassword: forgotNewPassword
         })
       });
+
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Password setup failed.');
       }
+
       if (data.token) {
         localStorage.setItem('zh_token', data.token);
         localStorage.setItem('zh_user', JSON.stringify(data.user));
       }
+
       setSuccessMessage('Password saved successfully! You are now logged in.');
       setTimeout(() => {
         onAuthSuccess(data.user, data.token);
@@ -511,15 +389,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
               ? 'Sign In to ZOHARVEST' 
               : mode === 'register' 
               ? 'Create Business Account' 
-              : mode === 'forgot_password'
-              ? 'Set Account Password'
-              : 'Phone Authentication'}
+              : 'Set Account Password'}
           </h3>
           <p className="text-xs text-emerald-200 mt-1">
             Mizoram’s direct agricultural exchange connecting local producers with wholesale buyers.
           </p>
 
-          {/* Mode Switcher Tabs */}
+          {/* Mode Switcher Tabs (Sign In vs Create Account) */}
           <div className="flex items-center gap-1.5 mt-5 bg-emerald-950/80 p-1 rounded-2xl border border-emerald-800">
             <button
               onClick={() => { setMode('login'); setErrorMessage(''); setSuccessMessage(''); setGoogleDetectedEmail(''); }}
@@ -530,21 +406,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
               <span>Sign In</span>
             </button>
             <button
-              onClick={() => { setMode('register'); setRegisterStep('form'); setErrorMessage(''); setSuccessMessage(''); setGoogleDetectedEmail(''); }}
+              onClick={() => { setMode('register'); setErrorMessage(''); setSuccessMessage(''); setGoogleDetectedEmail(''); }}
               className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                 mode === 'register' ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-emerald-200 hover:text-white'
               }`}
             >
               <span>Create Account</span>
-            </button>
-            <button
-              onClick={() => { setMode('phone_otp'); setErrorMessage(''); setSuccessMessage(''); setGoogleDetectedEmail(''); }}
-              className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
-                mode === 'phone_otp' ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-emerald-200 hover:text-white'
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Phone OTP</span>
             </button>
           </div>
         </div>
@@ -598,32 +465,18 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
 
             {/* Contextual Google Account Detection Alert */}
             {googleDetectedEmail && (
-              <div className="p-3.5 bg-emerald-50 border-2 border-emerald-300 rounded-2xl text-xs space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">🟢</span>
-                  <span className="font-extrabold text-emerald-950">Linked Google Account</span>
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 space-y-2">
+                <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <span>Google Account Detected ({googleDetectedEmail})</span>
                 </div>
-                <p className="text-emerald-800 text-[11px] leading-relaxed">
-                  The account for <strong>{googleDetectedEmail}</strong> is connected via Google. Use the Google button above to sign in with 1 click, or set an account password below for direct login.
+                <p className="text-[11px] text-amber-900 leading-relaxed">
+                  This account is linked to Google. Please click <strong>"Continue with Google"</strong> above to log in instantly.
                 </p>
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('forgot_password');
-                      setForgotStep('request');
-                      setForgotEmail(googleDetectedEmail);
-                      handleForgotPasswordRequest(googleDetectedEmail);
-                    }}
-                    className="bg-emerald-800 hover:bg-emerald-900 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs flex items-center gap-1.5"
-                  >
-                    <span>Set Password for Direct Login ➜</span>
-                  </button>
-                </div>
               </div>
             )}
 
-            <div className="relative flex items-center justify-center">
+            <div className="relative flex items-center justify-center my-2">
               <div className="border-t border-stone-200 w-full"></div>
               <span className="bg-white px-3 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
                 or sign in with password
@@ -631,7 +484,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1">Gmail / Email or Phone Number</label>
+              <label className="block text-xs font-semibold text-stone-700 mb-1">Email or Phone Number</label>
               <div className="relative flex items-center">
                 <Mail className="w-4 h-4 text-stone-400 absolute left-3" />
                 <input
@@ -639,7 +492,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                   required
                   value={emailOrPhone}
                   onChange={(e) => setEmailOrPhone(e.target.value)}
-                  placeholder="name@gmail.com or +91 98620..."
+                  placeholder="name@gmail.com or +91 94361 00000"
                   className="w-full pl-9 pr-3 py-2 text-xs font-medium bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
                 />
               </div>
@@ -657,9 +510,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                     setErrorMessage('');
                     setSuccessMessage('');
                   }}
-                  className="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold cursor-pointer"
+                  className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold cursor-pointer"
                 >
-                  Forgot or set password?
+                  Forgot / Set Password?
                 </button>
               </div>
               <div className="relative flex items-center">
@@ -697,7 +550,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                 type="button"
                 onClick={() => {
                   setMode('register');
-                  setRegisterStep('form');
                   setErrorMessage('');
                   setSuccessMessage('');
                 }}
@@ -709,8 +561,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
           </form>
         )}
 
-        {/* 2. CREATE ACCOUNT TAB - STEP 1: Details Form */}
-        {mode === 'register' && registerStep === 'form' && (
+        {/* 2. CREATE ACCOUNT TAB (Direct Registration - No OTP required) */}
+        {mode === 'register' && (
           <div className="p-6 space-y-4">
             
             {/* Role & District Selector */}
@@ -762,7 +614,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                   <span>Fastest: Sign Up with Google</span>
                 </span>
                 <span className="bg-emerald-200 text-emerald-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  Instant Verification
+                  Instant Access
                 </span>
               </div>
               <div className="w-full flex justify-center min-h-[44px] py-1">
@@ -774,18 +626,18 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                 </div>
               )}
               <p className="text-[10px] text-emerald-800 text-center">
-                Verifies your Gmail identity instantly with Google as {role === 'farmer' ? '🌾 Farmer / Collective' : '🏢 Wholesale Buyer'} ({district}). No OTP code needed.
+                Signs up instantly with your Google account as {role === 'farmer' ? '🌾 Farmer / Collective' : '🏢 Wholesale Buyer'} ({district}).
               </p>
             </div>
 
             <div className="relative flex items-center justify-center">
               <div className="border-t border-stone-200 w-full"></div>
               <span className="bg-white px-3 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
-                or register with email form & OTP
+                or create account with password (no OTP required)
               </span>
             </div>
 
-            <form onSubmit={handleProceedToOtp} className="space-y-3.5">
+            <form onSubmit={handleRegister} className="space-y-3.5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">Full Legal Name</label>
@@ -800,13 +652,15 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Phone Number (SMS / WhatsApp)</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Phone Number (WhatsApp / Orders)
+                  </label>
                   <input
                     type="tel"
                     required
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 98620 12345"
+                    placeholder="+91 94361 00000"
                     className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
@@ -838,7 +692,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">Password (Min. 8 characters with numbers & letters)</label>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Password (Min. 8 characters with numbers & letters)
+                </label>
                 <div className="relative flex items-center">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -887,7 +743,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                 )}
               </div>
 
-              {/* Inline Error Message directly above submit button */}
+              {/* Inline Error Message */}
               {errorMessage && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 animate-in fade-in">
                   <span>{errorMessage}</span>
@@ -910,112 +766,46 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
 
               <button
                 type="submit"
-                disabled={sendingEmailOtp}
+                disabled={loading}
                 className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3 rounded-xl text-xs sm:text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <span>{sendingEmailOtp ? 'Dispatching Verification Code...' : 'Continue to Email Verification'}</span>
+                <span>{loading ? 'Creating Account...' : 'Create Account'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
+
+              <div className="flex items-center justify-center text-xs pt-1">
+                <span className="text-stone-400">Already registered?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                  }}
+                  className="ml-1 text-emerald-700 hover:text-emerald-900 font-bold cursor-pointer"
+                >
+                  Sign In ➜
+                </button>
+              </div>
             </form>
           </div>
         )}
 
-        {/* 2. CREATE ACCOUNT TAB - STEP 2: Dedicated OTP Enter Screen */}
-        {mode === 'register' && registerStep === 'otp' && (
-          <div className="p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            <div className="text-center space-y-2">
-              <div className="w-14 h-14 bg-emerald-100 text-emerald-800 rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-xs">
-                ✉️
-              </div>
-              <h3 className="text-lg font-extrabold text-slate-900">Check Your Inbox</h3>
-              <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
-                We've dispatched a 6-digit verification code to <strong className="text-slate-900 font-bold">{email}</strong>. Enter the code below to complete your registration.
-              </p>
-              <p className="text-[11px] text-slate-400">
-                (Please check your spam or promotions folder if you don't see it within a minute)
-              </p>
-            </div>
-
-            <form onSubmit={handleVerifyEmailAndRegister} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 text-center mb-2">
-                  Enter 6-Digit Code
-                </label>
-                <input
-                  type="text"
-                  required
-                  autoFocus
-                  maxLength={6}
-                  value={emailOtp}
-                  onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
-                  placeholder="000000"
-                  className="w-full max-w-xs mx-auto block py-3 px-4 text-center text-2xl font-mono font-extrabold tracking-[0.4em] bg-slate-50 border-2 border-emerald-600 rounded-2xl shadow-inner focus:ring-4 focus:ring-emerald-500/20 focus:outline-hidden"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || emailOtp.length < 6}
-                className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold py-3.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <span>{loading ? 'Verifying & Creating Account...' : 'Verify Email & Complete Registration'}</span>
-                <Check className="w-4 h-4 text-amber-400" />
-              </button>
-
-              <div className="flex items-center justify-between text-xs pt-2">
-                <button
-                  type="button"
-                  onClick={() => setRegisterStep('form')}
-                  className="text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
-                >
-                  ← Edit details / change email
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleProceedToOtp}
-                  disabled={sendingEmailOtp}
-                  className="text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer disabled:opacity-50"
-                >
-                  {sendingEmailOtp ? 'Sending...' : 'Resend Code'}
-                </button>
-              </div>
-            </form>
-
-            <div className="pt-3 border-t border-slate-100 text-center">
-              <p className="text-xs text-slate-500 mb-1.5">Didn't receive an email code?</p>
-              <button
-                type="button"
-                onClick={() => setRegisterStep('form')}
-                className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer"
-              >
-                ← Back to Instant 1-Click Google Sign-Up (Zero OTP Needed)
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* 3. SET OR RESET PASSWORD FLOW */}
+        {/* 3. FORGOT / SET PASSWORD TAB */}
         {mode === 'forgot_password' && (
           <div className="p-6 space-y-4">
-            <div className="text-center space-y-1">
-              <div className="w-12 h-12 bg-amber-100 text-amber-800 rounded-2xl mx-auto flex items-center justify-center text-xl shadow-xs">
-                🔑
-              </div>
-              <h3 className="text-lg font-extrabold text-slate-900">
-                {forgotStep === 'request' ? 'Set or Reset Account Password' : 'Enter Verification Code'}
-              </h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                {forgotStep === 'request'
-                  ? 'Enter your Gmail or account email to receive a 6-digit verification code.'
-                  : `Enter the 6-digit code sent to ${forgotEmail} to set your new password.`}
-              </p>
-            </div>
-
             {forgotStep === 'request' ? (
-              <form onSubmit={(e) => { e.preventDefault(); handleForgotPasswordRequest(); }} className="space-y-4">
+              <form onSubmit={handleForgotRequest} className="space-y-4">
+                <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex items-start gap-2.5">
+                  <KeyRound className="w-5 h-5 text-emerald-800 shrink-0 mt-0.5" />
+                  <div className="text-xs text-emerald-950">
+                    <span className="font-bold block">Reset or Set Account Password</span>
+                    Enter your registered email address to receive a 6-digit code.
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">Account Email / Gmail</label>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Registered Email Address</label>
                   <div className="relative flex items-center">
                     <Mail className="w-4 h-4 text-stone-400 absolute left-3" />
                     <input
@@ -1024,42 +814,45 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                       value={forgotEmail}
                       onChange={(e) => setForgotEmail(e.target.value)}
                       placeholder="name@gmail.com"
-                      className="w-full pl-9 pr-3 py-2 text-xs font-medium bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
+                      className="w-full pl-9 pr-3 py-2 text-xs font-semibold bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-emerald-700 focus:outline-hidden"
                     />
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  <Send className="w-4 h-4 text-amber-300" />
-                  <span>{loading ? 'Sending code...' : 'Send Verification Code'}</span>
-                </button>
-
-                <div className="text-center pt-1">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => { setMode('login'); setErrorMessage(''); setSuccessMessage(''); }}
-                    className="text-xs text-stone-500 hover:text-stone-800 font-semibold cursor-pointer"
+                    className="py-2.5 px-4 rounded-xl border border-stone-200 text-stone-600 font-bold text-xs hover:bg-stone-50 transition cursor-pointer"
                   >
-                    ← Back to Sign In
+                    Back to Sign In
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  >
+                    <span>{loading ? 'Sending code...' : 'Send Verification Code'}</span>
                   </button>
                 </div>
               </form>
             ) : (
-              <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5">
+              <form onSubmit={handleForgotVerifyAndSet} className="space-y-4">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl">
+                  <span className="text-xs font-bold text-slate-900 block">Code Dispatched to {forgotEmail}</span>
+                  <span className="text-[11px] text-slate-500">Please enter the 6-digit code sent to your email inbox.</span>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">6-Digit Verification Code (Sent to your email)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Enter 6-Digit Code</label>
                   <input
                     type="text"
                     required
                     maxLength={6}
                     value={forgotOtp}
-                    onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
-                    placeholder="000000"
-                    className="w-full py-2 px-3 text-center text-lg font-mono font-extrabold tracking-widest bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    onChange={(e) => setForgotOtp(e.target.value)}
+                    placeholder="e.g. 556677"
+                    className="w-full text-center tracking-widest text-lg font-bold font-mono py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
 
@@ -1071,7 +864,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                     value={forgotNewPassword}
                     onChange={(e) => setForgotNewPassword(e.target.value)}
                     placeholder="Enter new password"
-                    className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
 
@@ -1082,144 +875,26 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                     required
                     value={forgotConfirmPassword}
                     onChange={(e) => setForgotConfirmPassword(e.target.value)}
-                    placeholder="Repeat new password"
-                    className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                    placeholder="Confirm new password"
+                    className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading || forgotOtp.length < 6 || forgotNewPassword.length < 8}
-                  className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  <Check className="w-4 h-4 text-amber-300" />
-                  <span>{loading ? 'Saving...' : 'Save Password & Sign In'}</span>
-                </button>
-
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setForgotStep('request')}
-                    className="text-stone-500 hover:text-stone-800 font-semibold cursor-pointer text-[11px]"
-                  >
-                    ← Change Email
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setMode('login'); setErrorMessage(''); setSuccessMessage(''); }}
-                    className="text-emerald-700 hover:text-emerald-900 font-bold cursor-pointer text-[11px]"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        )}
-
-        {/* 4. PHONE NUMBER OTP TAB */}
-        {mode === 'phone_otp' && (
-          <div className="p-6 space-y-4">
-            {!otpSent ? (
-              <form onSubmit={handleRequestOtp} className="space-y-4">
-                <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex items-start gap-2.5">
-                  <Smartphone className="w-5 h-5 text-emerald-800 shrink-0 mt-0.5" />
-                  <div className="text-xs text-emerald-950">
-                    <span className="font-bold block">Mobile Verification</span>
-                    Enter your phone number to receive a 6-digit code for quick sign-in without a password.
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">Mobile Phone Number</label>
-                  <div className="relative flex items-center">
-                    <Phone className="w-4 h-4 text-stone-400 absolute left-3" />
-                    <input
-                      type="tel"
-                      required
-                      value={otpPhone}
-                      onChange={(e) => setOtpPhone(e.target.value)}
-                      placeholder="+91 98620 12345"
-                      className="w-full pl-9 pr-3 py-2 text-xs font-semibold bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-emerald-700 focus:outline-hidden font-mono"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  <Send className="w-4 h-4 text-amber-300" />
-                  <span>{loading ? 'Sending code...' : 'Send Verification Code'}</span>
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-start justify-between gap-2">
-                  <div>
-                    <span className="text-xs font-bold text-slate-900 block">OTP Sent to {otpPhone}</span>
-                    <span className="text-[11px] text-slate-500">Please enter the 6-digit code sent to your phone.</span>
-                  </div>
-                  {testOtpNotice && (
-                    <div className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-lg text-xs font-bold font-mono">
-                      Test Code: {testOtpNotice}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Enter 6-Digit Code</label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value)}
-                    placeholder="e.g. 556677"
-                    className="w-full text-center tracking-widest text-lg font-bold font-mono py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Your Name</label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Full Name"
-                      className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Account Role</label>
-                    <select
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                    >
-                      <option value="farmer">Farmer / Collective</option>
-                      <option value="buyer">Wholesale Buyer</option>
-                    </select>
-                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => { setOtpSent(false); setOtpCode(''); }}
+                    onClick={() => setForgotStep('request')}
                     className="py-2.5 px-4 rounded-xl border border-slate-300 text-slate-600 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
                   >
-                    Change Number
+                    Resend Code
                   </button>
                   <button
                     type="submit"
-                    disabled={loading || otpCode.length < 6}
+                    disabled={loading || forgotOtp.length < 6}
                     className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-2.5 rounded-xl text-xs sm:text-sm transition shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                   >
                     <Check className="w-4 h-4" />
-                    <span>{loading ? 'Verifying...' : 'Verify OTP & Enter'}</span>
+                    <span>{loading ? 'Saving...' : 'Set New Password & Sign In'}</span>
                   </button>
                 </div>
               </form>

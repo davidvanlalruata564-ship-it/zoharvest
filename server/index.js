@@ -388,6 +388,9 @@ app.use(express.static(distPath, {
   }
 }));
 
+// Database Persistence Helpers
+const DB_FILE = path.join(__dirname, 'data', 'persisted_db.json');
+
 // In-Memory Database
 let products = initialProducts.map(p => ({
   moderationStatus: 'approved',
@@ -403,8 +406,76 @@ const emailOtpStore = new Map();
 
 // Initial Community Donations Data (Transparency Ledger)
 const initialDonations = [];
-
 let donations = [...initialDonations];
+
+// Helper to normalize Gmail addresses (Gmail ignores dots and +tags in email usernames)
+function normalizeEmail(em) {
+  if (!em || typeof em !== 'string') return '';
+  const clean = em.trim().toLowerCase();
+  const parts = clean.split('@');
+  if (parts.length === 2 && (parts[1] === 'gmail.com' || parts[1] === 'googlemail.com')) {
+    const userPart = parts[0].split('+')[0].replace(/\./g, '');
+    return `${userPart}@gmail.com`;
+  }
+  return clean;
+}
+
+// Persist database state to local JSON file
+function saveDb() {
+  try {
+    const dataDir = path.join(__dirname, 'data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    const payload = {
+      users,
+      products,
+      orders,
+      rfqs,
+      donations
+    };
+    fs.writeFileSync(DB_FILE, JSON.stringify(payload, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[DB SAVE ERROR]', err);
+  }
+}
+
+// Restore database state from disk on startup
+function loadDb() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const raw = fs.readFileSync(DB_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.users) && data.users.length > 0) {
+        const mergedUsers = [...data.users];
+        for (const initU of initialUsers) {
+          if (!mergedUsers.some(u => u.id === initU.id || (u.email && initU.email && u.email.toLowerCase() === initU.email.toLowerCase()))) {
+            mergedUsers.push(initU);
+          }
+        }
+        users = mergedUsers;
+      }
+      if (Array.isArray(data.products)) {
+        products = data.products;
+      }
+      if (Array.isArray(data.orders)) {
+        orders = data.orders;
+      }
+      if (Array.isArray(data.rfqs)) {
+        rfqs = data.rfqs;
+      }
+      if (Array.isArray(data.donations)) {
+        donations = data.donations;
+      }
+      console.log(`[DB LOADED] Restored ${users.length} users and ${products.length} products from disk.`);
+    }
+  } catch (err) {
+    console.error('[DB LOAD ERROR]', err);
+  }
+}
+
+// Restore on boot
+loadDb();
 
 // Helper to push automated SMS & WhatsApp notification alerts
 function pushNotification({ type, recipientRole, recipientName, title, message }) {
@@ -666,6 +737,7 @@ app.post('/api/products', authenticateToken, requireRole('farmer', 'admin'), asy
   };
 
   products.unshift(newProduct);
+  saveDb();
 
   pushNotification({
     type: 'whatsapp',
@@ -761,6 +833,8 @@ app.put('/api/products/:id', authenticateToken, requireRole('farmer', 'admin'), 
   if (giTagged !== undefined) product.giTagged = !!giTagged;
   if (unit) product.unit = unit;
 
+  saveDb();
+
   res.json({
     success: true,
     product,
@@ -780,6 +854,7 @@ app.delete('/api/products/:id', authenticateToken, requireRole('farmer', 'admin'
 
   const sellerId = product.sellerId;
   products.splice(index, 1);
+  saveDb();
   const stats = getUserListingStats(sellerId);
 
   res.json({
@@ -1396,10 +1471,10 @@ function sanitizeUser(user) {
   };
 }
 
-// Register new user account with mandatory email verification & password hashing
+// Register new user account directly with password hashing (Direct Registration - No OTP required)
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { name, email, password, phone, role, organization, district, address, emailOtp } = req.body;
+    const { name, email, password, phone, role, organization, district, address } = req.body;
 
     if (!name || !email || !password || !phone) {
       return res.status(400).json({ error: 'Name, email, password, and phone number are required.' });
@@ -1411,62 +1486,83 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Please enter a valid business or personal email address.' });
     }
 
-    // MANDATORY EMAIL / GMAIL VERIFICATION
-    if (!emailOtp) {
-      return res.status(400).json({ 
-        error: `Verification code required for ${cleanEmail}. Please enter the 6-digit code sent to your email.`,
-        requiresOtp: true
-      });
-    }
-
-    const otpRecord = emailOtpStore.get(cleanEmail);
-    if (!otpRecord || Date.now() > otpRecord.expiresAt) {
-      if (otpRecord) emailOtpStore.delete(cleanEmail);
-      return res.status(400).json({ 
-        error: 'Verification code has expired or has not been requested for this email. Please click "Send Verification Code".' 
-      });
-    }
-
-    otpRecord.attempts = (otpRecord.attempts || 0) + 1;
-    if (otpRecord.attempts > 5) {
-      emailOtpStore.delete(cleanEmail);
-      logSecurityEvent('EMAIL_OTP_MAX_ATTEMPTS_EXCEEDED', { email: cleanEmail }, req);
-      return res.status(429).json({ 
-        error: 'Maximum verification attempts exceeded. Please request a new verification code.' 
-      });
-    }
-
-    if (otpRecord.code !== String(emailOtp).trim()) {
-      const remaining = 5 - otpRecord.attempts;
-      return res.status(400).json({ 
-        error: `Invalid email verification code. ${remaining} attempt(s) remaining.` 
-      });
-    }
-
-    // Invalidate OTP immediately upon successful verification
-    emailOtpStore.delete(cleanEmail);
-
     // Enterprise Password Policy Enforcement (NIST SP 800-63B)
     const pwdErr = validatePasswordPolicy(password);
     if (pwdErr) {
       return res.status(400).json({ error: pwdErr });
     }
 
-    // Duplicate account prevention
-    const existingEmail = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
+    const cleanPhone = phone.trim();
+    const normEmail = normalizeEmail(cleanEmail);
+
+    // Check if user already exists by email (with Gmail dot & variant normalization)
+    const existingEmail = users.find(u => {
+      if (!u.email) return false;
+      return normalizeEmail(u.email) === normEmail || u.email.toLowerCase() === cleanEmail;
+    });
+
     if (existingEmail) {
-      return res.status(409).json({ error: 'An account with this email address already exists. Please sign in.' });
+      // SCENARIO 1: Account was previously created via Google Sign-In (no password set yet)
+      // Attach the password to that existing Google account seamlessly!
+      if (!existingEmail.passwordHash || existingEmail.authProvider === 'google') {
+        const salt = await bcrypt.genSalt(10);
+        existingEmail.passwordHash = await bcrypt.hash(password, salt);
+        existingEmail.googleLinked = true;
+        existingEmail.emailVerified = true;
+        existingEmail.email = cleanEmail; // Ensure consistent email
+        if (name && (!existingEmail.name || existingEmail.name === 'User')) existingEmail.name = name.trim();
+        if (cleanPhone && !existingEmail.phone) existingEmail.phone = cleanPhone;
+        if (organization) existingEmail.organization = organization.trim();
+        if (district) existingEmail.district = district;
+        if (address) existingEmail.address = address.trim();
+        if (role) existingEmail.role = role;
+
+        saveDb();
+        logSecurityEvent('GOOGLE_ACCOUNT_PASSWORD_LINKED', { userId: existingEmail.id, email: cleanEmail }, req);
+
+        const token = generateToken(existingEmail);
+        const userSafe = sanitizeUser(existingEmail);
+
+        return res.status(200).json({
+          success: true,
+          message: `Your account with Google (${cleanEmail}) has been linked with your password! Welcome back.`,
+          token,
+          user: userSafe
+        });
+      } else {
+        // SCENARIO 2: Account already exists with a password
+        const isMatch = await bcrypt.compare(password, existingEmail.passwordHash);
+        if (isMatch) {
+          existingEmail.emailVerified = true;
+          if (cleanPhone && !existingEmail.phone) existingEmail.phone = cleanPhone;
+          saveDb();
+          const token = generateToken(existingEmail);
+          const userSafe = sanitizeUser(existingEmail);
+          return res.status(200).json({
+            success: true,
+            message: 'Signed in to your existing account successfully.',
+            token,
+            user: userSafe
+          });
+        }
+        return res.status(409).json({ 
+          error: `An account with ${cleanEmail} is already registered. Please sign in with your password or Continue with Google.`,
+          alreadyRegistered: true 
+        });
+      }
     }
 
-    const cleanPhone = phone.trim();
+    // Check if phone number is already registered to a different account
     const existingPhone = users.find(u => u.phone === cleanPhone);
     if (existingPhone) {
-      return res.status(409).json({ error: 'An account with this phone number already exists.' });
+      return res.status(409).json({ error: `An account with phone number ${cleanPhone} is already registered. Please sign in.` });
     }
 
     // Hash password with salt
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
+
+    const isGmail = cleanEmail.endsWith('@gmail.com') || cleanEmail.endsWith('@googlemail.com');
 
     const newUser = {
       id: `user-${Date.now()}`,
@@ -1475,20 +1571,22 @@ app.post('/api/auth/register', async (req, res) => {
       emailVerified: true,
       passwordHash,
       role: role || 'farmer',
-      organization: organization ? organization.trim() : 'Mizoram Producer Co-op',
+      organization: organization ? organization.trim() : (role === 'farmer' ? `${district || 'Champhai'} Organic Union` : `${name.trim()}'s Wholesale Enterprise`),
       phone: cleanPhone,
-      district: district || 'Aizawl',
-      address: address ? address.trim() : `${district || 'Aizawl'}, Mizoram`,
+      district: district || 'Champhai',
+      address: address ? address.trim() : `${district || 'Champhai'}, Mizoram`,
       isVerified: true,
       status: 'active',
-      authProvider: 'email_password_verified',
-      verificationDoc: 'Gmail Ownership Verified via 2FA OTP',
+      authProvider: isGmail ? 'google_linked_email' : 'email_password_verified',
+      googleLinked: isGmail, // Automatically Google linkable for Gmail users
+      verificationDoc: 'Direct Producer Account Registration',
       grossEarnings: 0,
       activeEscrow: 0,
       createdAt: new Date().toISOString()
     };
 
     users.push(newUser);
+    saveDb();
 
     logSecurityEvent('USER_REGISTERED', { userId: newUser.id, role: newUser.role, email: newUser.email }, req);
 
@@ -1496,7 +1594,7 @@ app.post('/api/auth/register', async (req, res) => {
       type: 'whatsapp',
       recipientRole: 'admin',
       title: '🛡️ New Account Registration',
-      message: `${newUser.name} registered as ${newUser.role.toUpperCase()} (${newUser.organization}). Pending KYC document submission.`
+      message: `${newUser.name} registered as ${newUser.role.toUpperCase()} (${newUser.organization}).`
     });
 
     const token = generateToken(newUser);
@@ -1504,7 +1602,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Account created successfully.',
+      message: 'Account created successfully! Welcome to ZOHARVEST.',
       token,
       user: userSafe
     });
@@ -1533,10 +1631,19 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(429).json({ error: lockMsg });
     }
 
-    const user = users.find(u => 
-      (u.email && u.email.toLowerCase() === identifier) || 
-      (u.phone && u.phone.toLowerCase() === identifier)
-    );
+    const normIdentifier = normalizeEmail(identifier);
+    const cleanPhoneDigits = identifier.replace(/\D/g, '');
+
+    const user = users.find(u => {
+      if (!u) return false;
+      const uNorm = normalizeEmail(u.email);
+      const emailMatches = uNorm === normIdentifier || (u.email && u.email.toLowerCase() === identifier);
+      const phoneMatches = u.phone && (
+        u.phone.toLowerCase() === identifier || 
+        (cleanPhoneDigits.length >= 8 && u.phone.replace(/\D/g, '').includes(cleanPhoneDigits))
+      );
+      return emailMatches || phoneMatches;
+    });
 
     if (!user) {
       recordFailedLogin(identifier);
@@ -1686,6 +1793,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     user.passwordHash = await bcrypt.hash(newPassword, salt);
     user.emailVerified = true;
+    saveDb();
 
     logSecurityEvent('PASSWORD_RESET_SUCCESS', { userId: user.id }, req);
 
@@ -1719,6 +1827,7 @@ app.post('/api/auth/upload-kyc', authenticateToken, (req, res) => {
   if (!user) return res.status(404).json({ error: 'User not found.' });
 
   user.verificationDoc = `${documentType || 'Govt Document'}: ${documentNumber || 'Pending Review'}`;
+  saveDb();
   
   pushNotification({
     type: 'system',
@@ -1795,6 +1904,7 @@ app.put('/api/users/profile', authenticateToken, (req, res) => {
   }
 
   logSecurityEvent('PROFILE_UPDATED', { userId: user.id }, req);
+  saveDb();
 
   const userSafe = sanitizeUser(user);
   res.json({ success: true, message: 'Profile updated successfully.', user: userSafe });
@@ -2067,7 +2177,17 @@ app.post('/api/auth/google', async (req, res) => {
       return res.status(400).json({ error: 'Cryptographic Google credential token is required for authentication.' });
     }
 
-    let user = users.find(u => u.email && u.email.toLowerCase() === verifiedEmail);
+    const normVerifiedEmail = normalizeEmail(verifiedEmail);
+    const cleanPhone = phone ? phone.trim() : null;
+
+    // Check if account already exists with this Gmail (accounting for dots/variants) OR matching phone
+    let user = users.find(u => {
+      if (!u.email) return false;
+      const uNorm = normalizeEmail(u.email);
+      const emailMatches = uNorm === normVerifiedEmail || u.email.toLowerCase() === verifiedEmail;
+      const phoneMatches = cleanPhone && u.phone && u.phone === cleanPhone;
+      return emailMatches || phoneMatches;
+    });
 
     if (!user) {
       // Automatically provision verified Google account with chosen role and district
@@ -2078,7 +2198,7 @@ app.post('/api/auth/google', async (req, res) => {
         avatarUrl: verifiedAvatar,
         role: role || 'farmer',
         organization: organization || (role === 'farmer' ? `${district || 'Champhai'} Organic Collective` : `${verifiedName}'s Wholesale Enterprise`),
-        phone: phone ? phone.trim() : '',
+        phone: cleanPhone || '',
         district: district || 'Champhai',
         address: `${district || 'Champhai'}, Mizoram`,
         isVerified: true,
@@ -2092,6 +2212,7 @@ app.post('/api/auth/google', async (req, res) => {
         createdAt: new Date().toISOString()
       };
       users.push(user);
+      saveDb();
       logSecurityEvent('GOOGLE_USER_REGISTERED', { email: verifiedEmail, role: user.role }, req);
     } else {
       if (user.status === 'suspended') {
@@ -2101,15 +2222,20 @@ app.post('/api/auth/google', async (req, res) => {
       // Link Google authentication and verified email status to existing account
       user.googleLinked = true;
       user.emailVerified = true;
+      user.email = verifiedEmail;
       if (verifiedAvatar && !user.avatarUrl) {
         user.avatarUrl = verifiedAvatar;
       }
-      logSecurityEvent('GOOGLE_LOGIN_SUCCESS', { userId: user.id }, req);
+      if (cleanPhone && !user.phone) {
+        user.phone = cleanPhone;
+      }
+      saveDb();
+      logSecurityEvent('GOOGLE_LOGIN_SUCCESS', { userId: user.id, email: verifiedEmail, linkedToExisting: true }, req);
     }
 
     const token = generateToken(user);
     const userSafe = sanitizeUser(user);
-    res.json({ success: true, message: 'Google authentication verified successfully.', token, user: userSafe });
+    res.json({ success: true, message: 'Google authentication verified and linked successfully.', token, user: userSafe });
   } catch (err) {
     console.error('[GOOGLE AUTH ERROR]', err);
     res.status(500).json({ error: 'Google authentication service failed.' });
@@ -2145,6 +2271,7 @@ app.post('/api/auth/google/link', authenticateToken, async (req, res) => {
     if (payload.picture && !user.avatarUrl) {
       user.avatarUrl = payload.picture;
     }
+    saveDb();
 
     logSecurityEvent('GOOGLE_ACCOUNT_LINKED', { userId: user.id, googleEmail }, req);
     res.json({
