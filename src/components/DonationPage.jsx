@@ -57,9 +57,9 @@ const DONATION_CAUSES = [
 export default function DonationPage({ t, currentLang }) {
   const [donations, setDonations] = useState([]);
   const [metrics, setMetrics] = useState({
-    totalAmount: 84000,
-    totalDonors: 5,
-    farmersBenefited: 240,
+    totalAmount: 0,
+    totalDonors: 0,
+    farmersBenefited: 0,
     isCompletelyFree: true
   });
   const [loading, setLoading] = useState(false);

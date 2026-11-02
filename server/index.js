@@ -385,58 +385,7 @@ const otpStore = new Map();
 const emailOtpStore = new Map();
 
 // Initial Community Donations Data (Transparency Ledger)
-const initialDonations = [
-  {
-    id: 'don-1',
-    donorName: 'Lalrindika Fanai',
-    amount: 5000,
-    cause: 'Community Solar Drier Fund',
-    isAnonymous: false,
-    message: 'Happy to support Champhai chilli farmers with post-harvest drying equipment.',
-    date: '2026-10-28T14:32:00.000Z',
-    paymentMethod: 'UPI'
-  },
-  {
-    id: 'don-2',
-    donorName: 'Ananya Agro Foundation',
-    amount: 25000,
-    cause: 'FPO Quality & Moisture Testing Kits',
-    isAnonymous: false,
-    message: 'Grant contribution towards digital moisture meters for Serchhip turmeric growers.',
-    date: '2026-10-29T10:15:00.000Z',
-    paymentMethod: 'NetBanking'
-  },
-  {
-    id: 'don-3',
-    donorName: 'Anonymous Patron',
-    amount: 2500,
-    cause: 'Organic Seedling & Soil Kit',
-    isAnonymous: true,
-    message: 'Keep ZOHARVEST 100% free for all local farmers!',
-    date: '2026-10-30T18:40:00.000Z',
-    paymentMethod: 'UPI'
-  },
-  {
-    id: 'don-4',
-    donorName: 'Northeast Sustainable Trade Forum',
-    amount: 50000,
-    cause: 'Mizoram Artisan & GI Heritage Grant',
-    isAnonymous: false,
-    message: 'Supporting women weaver self-help groups in Lunglei with cane and bamboo artisan toolkits.',
-    date: '2026-10-31T09:20:00.000Z',
-    paymentMethod: 'Card'
-  },
-  {
-    id: 'don-5',
-    donorName: 'Vanlalhruaia Royte',
-    amount: 1500,
-    cause: 'Organic Seedling & Soil Kit',
-    isAnonymous: false,
-    message: 'Proud to see Mizoram ginger and turmeric traded directly without middleman cuts.',
-    date: '2026-11-01T11:05:00.000Z',
-    paymentMethod: 'UPI'
-  }
-];
+const initialDonations = [];
 
 let donations = [...initialDonations];
 
@@ -1720,7 +1669,7 @@ app.post('/api/notifications/mark-read', (req, res) => {
 app.get('/api/donations', (req, res) => {
   const totalAmount = donations.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
   const totalDonors = donations.length;
-  const farmersBenefited = Math.max(140, Math.round(totalAmount / 320));
+  const farmersBenefited = totalAmount > 0 ? Math.round(totalAmount / 320) : 0;
 
   res.json({
     donations,

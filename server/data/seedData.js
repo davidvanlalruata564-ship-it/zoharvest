@@ -21,7 +21,7 @@ export const initialProducts = [
     category: 'spices',
     district: 'Champhai',
     fpoName: 'Champhai High-Altitude Organic FPO',
-    sellerId: 'user-farmer-1',
+    sellerId: 'user-admin',
     rating: 4.9,
     reviewsCount: 38,
     isOrganic: true,
@@ -56,7 +56,7 @@ export const initialProducts = [
     category: 'spices',
     district: 'Kolasib',
     fpoName: 'Tlawng River Valley Producers Co-op',
-    sellerId: 'user-farmer-1',
+    sellerId: 'user-admin',
     rating: 4.8,
     reviewsCount: 42,
     isOrganic: true,
@@ -90,7 +90,7 @@ export const initialProducts = [
     category: 'spices',
     district: 'Serchhip',
     fpoName: 'Serchhip Agro-Spice FPO',
-    sellerId: 'user-farmer-2',
+    sellerId: 'user-admin',
     rating: 4.9,
     reviewsCount: 29,
     isOrganic: true,
@@ -123,7 +123,7 @@ export const initialProducts = [
     category: 'grains',
     district: 'Champhai',
     fpoName: 'Champhai Rice Valley Farmer Union',
-    sellerId: 'user-farmer-1',
+    sellerId: 'user-admin',
     rating: 4.7,
     reviewsCount: 19,
     isOrganic: true,
@@ -156,7 +156,7 @@ export const initialProducts = [
     category: 'fruits',
     district: 'Mamit',
     fpoName: 'Mamit Horticultural Clan Group',
-    sellerId: 'user-farmer-2',
+    sellerId: 'user-admin',
     rating: 4.8,
     reviewsCount: 15,
     isOrganic: true,
@@ -189,7 +189,7 @@ export const initialProducts = [
     category: 'handicrafts',
     district: 'Khawzawl',
     fpoName: 'Khawzawl Bamboo Artisans Cooperative',
-    sellerId: 'user-farmer-2',
+    sellerId: 'user-admin',
     rating: 5.0,
     reviewsCount: 31,
     isOrganic: true,
@@ -222,7 +222,7 @@ export const initialProducts = [
     category: 'cashcrops',
     district: 'Lunglei',
     fpoName: 'Lunglei Forest Produce Union',
-    sellerId: 'user-farmer-1',
+    sellerId: 'user-admin',
     rating: 4.6,
     reviewsCount: 22,
     isOrganic: true,
@@ -255,7 +255,7 @@ export const initialProducts = [
     category: 'fruits',
     district: 'Aizawl',
     fpoName: 'Aizawl Floriculture Growers Union',
-    sellerId: 'user-farmer-1',
+    sellerId: 'user-admin',
     rating: 4.9,
     reviewsCount: 27,
     isOrganic: false,
@@ -283,211 +283,11 @@ export const initialProducts = [
   }
 ];
 
-export const initialRFQs = [
-  {
-    id: 'RFQ-701',
-    productId: 'prod-1',
-    productName: "GI-Tagged Mizo Chilli (Bird's Eye / Hmarchate)",
-    buyerId: 'user-buyer-1',
-    buyerName: 'Spices India Wholesale Corp',
-    buyerLocation: 'Kochi, Kerala (Pincode: 682003)',
-    sellerId: 'user-farmer-1',
-    sellerName: 'Champhai High-Altitude Organic FPO',
-    quantity: 500,
-    unit: 'kg',
-    targetPrice: 710,
-    offeredPrice: 730,
-    status: 'Counter-Offered', // 'Pending', 'Counter-Offered', 'Accepted', 'PO_Generated', 'Escrow_Paid', 'Dispatched', 'Settled', 'Rejected'
-    targetDeliveryDate: '2026-11-20',
-    shippingDestination: 'Willingdon Island Terminal, Kochi, Kerala',
-    specifications: 'Moisture content strictly < 9.5%, aflatoxin test certificate required with shipment.',
-    createdAt: '2026-10-18T10:30:00Z',
-    history: [
-      { sender: 'buyer', message: 'Tendered bid of ₹710/kg for 500kg consignment.', date: '2026-10-18T10:30:00Z', price: 710 },
-      { sender: 'seller', message: 'Counter-offer: We can deliver premium double-cleaned Grade A at ₹730/kg including export-grade moisture proof liners.', date: '2026-10-19T14:15:00Z', price: 730 }
-    ]
-  },
-  {
-    id: 'RFQ-702',
-    productId: 'prod-2',
-    productName: 'Mizoram High-Oleoresin Organic Fresh Ginger',
-    buyerId: 'user-buyer-1',
-    buyerName: 'Spices India Wholesale Corp',
-    buyerLocation: 'Mumbai Distribution Hub, MH (400001)',
-    sellerId: 'user-farmer-1',
-    sellerName: 'Champhai High-Altitude Organic FPO',
-    quantity: 25,
-    unit: 'quintal',
-    targetPrice: 6200,
-    offeredPrice: 6200,
-    status: 'Accepted',
-    targetDeliveryDate: '2026-12-24',
-    shippingDestination: 'Vashi APMC Wholesale Market, Navi Mumbai',
-    specifications: 'Advance pre-order contract for mid-December harvest. Clean washed, minimum fiber.',
-    createdAt: '2026-10-15T09:00:00Z',
-    history: [
-      { sender: 'buyer', message: 'Requesting 25 quintals advance harvest lock-in at ₹6,200/quintal.', date: '2026-10-15T09:00:00Z', price: 6200 },
-      { sender: 'seller', message: 'Accepted. Harvest lot reserved for harvest dates Dec 15-20.', date: '2026-10-16T11:20:00Z', price: 6200 }
-    ]
-  },
-  {
-    id: 'RFQ-703',
-    productId: 'prod-3',
-    productName: 'High-Curcumin Pure Turmeric Fingers (Aieng)',
-    buyerId: 'user-buyer-2',
-    buyerName: 'AyurVeda Naturals Bangalore',
-    buyerLocation: 'Bangalore, KA (560068)',
-    sellerId: 'user-farmer-2',
-    sellerName: 'Serchhip Agro-Spice FPO',
-    quantity: 15,
-    unit: 'quintal',
-    targetPrice: 13800,
-    offeredPrice: 14000,
-    status: 'PO_Generated',
-    targetDeliveryDate: '2026-11-10',
-    shippingDestination: 'Electronic City Phase II, Bangalore',
-    specifications: 'Batch tested curcumin report must accompany invoice. Double jute packaging.',
-    createdAt: '2026-10-12T16:00:00Z',
-    history: [
-      { sender: 'buyer', message: 'RFQ submitted for 15 quintals at ₹13,800/quintal', date: '2026-10-12T16:00:00Z', price: 13800 },
-      { sender: 'seller', message: 'Accepted at ₹14,000/quintal with batch test certificate.', date: '2026-10-13T10:00:00Z', price: 14000 },
-      { sender: 'buyer', message: 'Formal PO generated. Ready for Escrow deposit.', date: '2026-10-14T11:45:00Z', price: 14000 }
-    ]
-  }
-];
+export const initialRFQs = [];
 
-export const initialOrders = [
-  {
-    id: 'PO-ZH-9101',
-    rfqId: 'RFQ-703',
-    productId: 'prod-3',
-    productName: 'High-Curcumin Pure Turmeric Fingers (Aieng)',
-    buyerId: 'user-buyer-2',
-    buyerName: 'AyurVeda Naturals Bangalore',
-    sellerId: 'user-farmer-2',
-    sellerName: 'Serchhip Agro-Spice FPO',
-    quantity: 15,
-    unit: 'quintal',
-    unitPrice: 14000,
-    totalCommodityAmount: 210000,
-    platformFeeRate: 0.025, // 2.5% platform commission
-    platformFeeAmount: 5250,
-    netPayableToSeller: 204750,
-    shippingDestination: 'AyurVeda Warehouse, Hosur Road, Bangalore, KA - 560068',
-    status: 'Escrow_Paid', // 'PO_Created', 'Escrow_Paid', 'Dispatched', 'Delivered_Inspected', 'Settled'
-    escrowTransactionId: 'ESC-RZP-99238419',
-    escrowPaidAt: '2026-10-19T14:22:00Z',
-    dispatchInfo: {
-      carrier: 'NorthEast Express Cargo / BlueDart Freight',
-      trackingNumber: 'NEC-BLR-8839201',
-      dispatchedAt: null,
-      estimatedArrival: '2026-11-04'
-    },
-    verificationNotes: 'Pending seller dispatch confirmation.'
-  },
-  {
-    id: 'PO-ZH-8890',
-    rfqId: 'RFQ-650',
-    productId: 'prod-1',
-    productName: "GI-Tagged Mizo Chilli (Bird's Eye / Hmarchate)",
-    buyerId: 'user-buyer-1',
-    buyerName: 'Spices India Wholesale Corp',
-    sellerId: 'user-farmer-1',
-    sellerName: 'Champhai High-Altitude Organic FPO',
-    quantity: 200,
-    unit: 'kg',
-    unitPrice: 750,
-    totalCommodityAmount: 150000,
-    platformFeeRate: 0.025,
-    platformFeeAmount: 3750,
-    netPayableToSeller: 146250,
-    shippingDestination: 'APMC Yard, Navi Mumbai',
-    status: 'Settled',
-    escrowTransactionId: 'ESC-RZP-81203491',
-    escrowPaidAt: '2026-10-02T10:00:00Z',
-    dispatchInfo: {
-      carrier: 'Speed Post Bulk Cargo',
-      trackingNumber: 'SP-MZ-7729112IN',
-      dispatchedAt: '2026-10-04T12:00:00Z',
-      deliveredAt: '2026-10-10T15:30:00Z'
-    },
-    verificationNotes: 'Quality verified Grade A. Escrow payout of ₹1,46,250 released to Champhai FPO account.'
-  }
-];
+export const initialOrders = [];
 
 export const initialUsers = [
-  {
-    id: 'user-farmer-1',
-    name: 'Lalthanmawia (Chairman)',
-    email: 'farmer@zoharvest.in',
-    passwordHash: '$2b$10$m0PXispjgXYN2duDmmt6..QqtzKGz97GnWdj0PG52LBewc24DGCZ6', // 'Farmer@123'
-    role: 'farmer',
-    organization: 'Champhai High-Altitude Organic FPO',
-    phone: '+91 98620 12345',
-    district: 'Champhai',
-    address: 'Vengthlang, Champhai, Mizoram - 796321',
-    isVerified: true,
-    verificationDoc: 'FPO Registration #MZ-CHP-2022-8821',
-    bankAccount: {
-      bankName: 'Mizoram Rural Bank',
-      accountNumber: '**** **** 8942',
-      ifsc: 'SBIN0RRMIGB',
-      beneficiary: 'Champhai High-Altitude Organic FPO'
-    },
-    grossEarnings: 345000,
-    activeEscrow: 204750
-  },
-  {
-    id: 'user-farmer-2',
-    name: 'C. Lalramzauva',
-    email: 'serchhip.fpo@zoharvest.in',
-    passwordHash: '$2b$10$m0PXispjgXYN2duDmmt6..QqtzKGz97GnWdj0PG52LBewc24DGCZ6', // 'Farmer@123'
-    role: 'farmer',
-    organization: 'Serchhip Agro-Spice FPO & Craft Guild',
-    phone: '+91 94361 54321',
-    district: 'Serchhip',
-    address: 'Bazar Veng, Serchhip, Mizoram - 796181',
-    isVerified: true,
-    verificationDoc: 'Organic Society Reg #MZ-SRC-19-4412',
-    bankAccount: {
-      bankName: 'State Bank of India',
-      accountNumber: '**** **** 1209',
-      ifsc: 'SBIN0007412',
-      beneficiary: 'Serchhip Agro-Spice FPO'
-    },
-    grossEarnings: 180000,
-    activeEscrow: 0
-  },
-  {
-    id: 'user-buyer-1',
-    name: 'Rajiv Mehra',
-    email: 'buyer@spicesindia.com',
-    passwordHash: '$2b$10$jM3T3uzwKZrBPW6wsrUaXehmfurqmrWYxlfCXjiXXt5lh0tIfkUl6', // 'Buyer@123'
-    role: 'buyer',
-    organization: 'Spices India Wholesale Corp',
-    phone: '+91 98111 67890',
-    district: 'National / Mumbai',
-    address: 'Plot 42, Sector 19, Vashi Wholesale Complex, Navi Mumbai - 400703',
-    isVerified: true,
-    verificationDoc: 'GSTIN: 27AABCS1429Q1ZT',
-    activeOrders: 2,
-    totalPurchases: 450000
-  },
-  {
-    id: 'user-buyer-2',
-    name: 'Dr. Anita Roy',
-    email: 'anita@ayurvedanaturals.com',
-    passwordHash: '$2b$10$jM3T3uzwKZrBPW6wsrUaXehmfurqmrWYxlfCXjiXXt5lh0tIfkUl6', // 'Buyer@123'
-    role: 'buyer',
-    organization: 'AyurVeda Naturals Bangalore',
-    phone: '+91 99000 88776',
-    district: 'National / Bangalore',
-    address: 'Tech Agro Park, Electronic City, Bangalore, KA - 560100',
-    isVerified: true,
-    verificationDoc: 'GSTIN: 29AAACA9921B1ZN',
-    activeOrders: 1,
-    totalPurchases: 210000
-  },
   {
     id: 'user-admin',
     name: 'ZOHARVEST Operations Officer',
@@ -498,38 +298,13 @@ export const initialUsers = [
     phone: '+91 94361 00000',
     district: 'Aizawl (Headquarters)',
     address: 'Babutlang, Aizawl, Mizoram - 796001',
-    isVerified: true
+    isVerified: true,
+    authProvider: 'email_password_verified',
+    verificationDoc: 'Official State Platform Operations Credential',
+    grossEarnings: 0,
+    activeEscrow: 0,
+    createdAt: '2026-10-01T00:00:00.000Z'
   }
 ];
 
-export const initialNotifications = [
-  {
-    id: 'notif-1',
-    type: 'whatsapp',
-    recipientRole: 'farmer',
-    recipientName: 'Champhai FPO',
-    title: '🟢 WhatsApp Alert: Escrow Deposited',
-    message: 'Buyer has deposited ₹2,10,000 into ZOHARVEST Escrow for PO-ZH-9101 (Curcumin Turmeric). Funds are secured. Please pack and dispatch consignment.',
-    timestamp: '2 hours ago',
-    read: false
-  },
-  {
-    id: 'notif-2',
-    type: 'sms',
-    recipientRole: 'buyer',
-    recipientName: 'Spices India Wholesale Corp',
-    title: '📱 SMS: RFQ Counter-Offer Received',
-    message: 'Champhai FPO has counter-offered on RFQ-701 for Mizo Bird\'s Eye Chilli at ₹730/kg. Tap to view and accept.',
-    timestamp: '5 hours ago',
-    read: false
-  },
-  {
-    id: 'notif-3',
-    type: 'system',
-    recipientRole: 'all',
-    title: '🌾 Advance Harvest Season Active',
-    message: 'Pre-order harvest window open for Ginger (Kolasib) and Broom Grass (Lunglei). Lock in bulk procurement contracts now.',
-    timestamp: '1 day ago',
-    read: true
-  }
-];
+export const initialNotifications = [];
