@@ -220,7 +220,7 @@ export default function RevenueModelExplainer({ t }) {
           </h3>
         </div>
         <p className="text-xs sm:text-sm text-stone-300 leading-relaxed max-w-3xl">
-          By bridging the geographic barrier between Mizoram's hill farmers and nationwide commercial buyers, ZOHARVEST unlocks direct market access for unique GI-tagged commodities, provides guaranteed escrow payments, and builds lasting prosperity for grassroots farming families.
+          By bridging the geographic barrier between Mizoram's hill farmers and nationwide commercial buyers, ZOHARVEST unlocks direct market access for local commodities, enables direct contact and direct payments, and builds lasting prosperity for grassroots farming families.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
           <div className="bg-stone-800/80 p-3.5 rounded-xl border border-stone-700">
@@ -232,8 +232,8 @@ export default function RevenueModelExplainer({ t }) {
             <p className="text-[11px] text-stone-300">Bilingual English & Mizo support designed for simplicity, mobile ease, and low-connectivity environments.</p>
           </div>
           <div className="bg-stone-800/80 p-3.5 rounded-xl border border-stone-700">
-            <span className="font-bold text-emerald-300 block mb-1">3. Safe Escrow Payments</span>
-            <p className="text-[11px] text-stone-300">Protects both buyers and sellers from payment defaults through automated milestone-based fund releases.</p>
+            <span className="font-bold text-emerald-300 block mb-1">3. Direct P2P Payments</span>
+            <p className="text-[11px] text-stone-300">Direct settlement via GPay / UPI and Bank transfer directly between buyers and sellers with zero platform cuts.</p>
           </div>
         </div>
       </div>

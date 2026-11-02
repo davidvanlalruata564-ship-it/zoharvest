@@ -690,7 +690,7 @@ export default function ProfileModal({
                 <KeyRound className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
                 <div className="text-xs text-amber-950">
                   <span className="font-bold block">Enterprise Password Protection</span>
-                  Ensure your password contains at least 8 characters, combining uppercase, lowercase, numbers, and symbols to secure high-value escrow trade authorizations.
+                  Ensure your password contains at least 8 characters, combining uppercase, lowercase, numbers, and symbols to protect your account and listing management.
                 </div>
               </div>
             )}

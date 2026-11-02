@@ -39,7 +39,7 @@ export default function AboutPage({ onNavigateTab, t, currentLang }) {
             Built for Farmers, Not for Profit.
           </h1>
           <p className="text-emerald-100/90 text-sm sm:text-base leading-relaxed">
-            ZOHARVEST is completely free for all farmers, grower collectives, and wholesale buyers across Mizoram. No platform cuts, no listing fees, and no monthly subscriptions. Every single rupee agreed upon in negotiations flows directly to our local agricultural producers and artisans.
+            ZOHARVEST is completely free for all farmers, grower collectives, and wholesale buyers across Mizoram. No platform cuts, no listing fees, and no monthly subscriptions. Every single rupee agreed upon flows directly to our local agricultural producers and artisans.
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-3">
@@ -95,11 +95,11 @@ export default function AboutPage({ onNavigateTab, t, currentLang }) {
             <ShieldCheck className="w-6 h-6" />
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md">
-            Security Guarantee
+            Direct Settlement
           </span>
-          <h3 className="text-base font-bold text-stone-900">Free Escrow Protection</h3>
+          <h3 className="text-base font-bold text-stone-900">Direct P2P Payments</h3>
           <p className="text-xs text-stone-500 leading-relaxed">
-            Buyers deposit into a neutral, zero-risk escrow account. Payout is released to the seller only when the shipment arrives and passes verification.
+            Buyers pay growers directly via GPay / UPI or Bank Transfer. No platform intermediary holds your funds or charges checkout fees.
           </p>
         </div>
 
@@ -156,13 +156,13 @@ export default function AboutPage({ onNavigateTab, t, currentLang }) {
                 <td className="py-3 px-4 font-semibold text-stone-900">Price Transparency</td>
                 <td className="py-3 px-4 text-red-600">Opaque cash price fixing</td>
                 <td className="py-3 px-4 text-stone-600">Listing markup layer</td>
-                <td className="py-3 px-4 bg-emerald-50 text-emerald-900 font-bold">100% Direct Negotiation</td>
+                <td className="py-3 px-4 bg-emerald-50 text-emerald-900 font-bold">Direct Seller WhatsApp & Call</td>
               </tr>
               <tr>
-                <td className="py-3 px-4 font-semibold text-stone-900">Payment Security</td>
+                <td className="py-3 px-4 font-semibold text-stone-900">Payment Method</td>
                 <td className="py-3 px-4 text-red-600">High default & credit risk</td>
                 <td className="py-3 px-4 text-stone-600">Third-party payment gateways</td>
-                <td className="py-3 px-4 bg-emerald-50 text-emerald-900 font-bold rounded-b-xl">Guaranteed Escrow Protection</td>
+                <td className="py-3 px-4 bg-emerald-50 text-emerald-900 font-bold rounded-b-xl">Direct GPay & Bank Transfer (0% Cut)</td>
               </tr>
             </tbody>
           </table>

@@ -882,7 +882,7 @@ export default function AdminVerificationHub({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { name: 'Champhai', crop: "Bird's Eye Chilli (GI-Tagged), Grapes, Rice", fpos: 6, gmv: '₹18,40,000' },
+              { name: 'Champhai', crop: "Bird's Eye Chilli, Grapes, Rice", fpos: 6, gmv: '₹18,40,000' },
               { name: 'Kolasib', crop: 'High-Oleoresin Ginger, Areca Nut, Turmeric', fpos: 5, gmv: '₹14,20,000' },
               { name: 'Serchhip', crop: 'Lakadong High-Curcumin Turmeric, Cabbage', fpos: 4, gmv: '₹9,80,000' },
               { name: 'Aizawl', crop: 'Handicrafts, Bamboo Artifacts, Anthurium Flowers', fpos: 7, gmv: '₹12,10,000' },

@@ -52,7 +52,7 @@ export const translations = {
     dispatchGoods: 'Mark Dispatched & Add Tracking',
     verifyAndRelease: 'Confirm Delivery & Release Payment',
     grossEarnings: 'Settled Sales',
-    activeEscrowBalance: 'Protected in Escrow',
+    activeEscrowBalance: 'Active Orders & Shipments',
     newListing: 'List a Product',
     notifications: 'Notifications'
   },
@@ -109,7 +109,7 @@ export const translations = {
     dispatchGoods: 'Thawn Chhuak Rawh',
     verifyAndRelease: 'Finfiah La, Pawisa Pe Rawh',
     grossEarnings: 'Hmuh Tawh Zat',
-    activeEscrowBalance: 'Escrow ah A Him',
+    activeEscrowBalance: 'Order Kal Mek Zat',
     newListing: 'Thil Dah Rawh',
     notifications: 'Hriattirnate'
   }

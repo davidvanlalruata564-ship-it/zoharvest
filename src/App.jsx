@@ -906,18 +906,18 @@ export default function App() {
             <h4 className="font-bold text-amber-300 uppercase tracking-wider text-[11px] mb-2.5">Platform Values</h4>
             <ul className="space-y-1.5 text-stone-400 text-xs">
               <li>• Direct Farm-Gate Pricing</li>
-              <li>• Transparent Price Negotiations</li>
-              <li>• Advance Seasonal Harvest Contracts</li>
-              <li>• Escrow Protected Payouts</li>
+              <li>• Direct WhatsApp & Phone Contact</li>
+              <li>• Direct GPay & Bank Payouts</li>
+              <li>• 0% Platform Commission</li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-bold text-amber-300 uppercase tracking-wider text-[11px] mb-2.5">Key Produce & Crafts</h4>
             <ul className="space-y-1.5 text-stone-400 text-xs">
-              <li>• Champhai Bird’s Eye Chilli (GI-Tagged)</li>
+              <li>• Champhai Bird’s Eye Chilli</li>
               <li>• Kolasib Mountain Ginger</li>
-              <li>• Serchhip Lakadong Curcumin Turmeric</li>
+              <li>• Serchhip Curcumin Turmeric</li>
               <li>• Lunglei Artisanal Bamboo & Cane Crafts</li>
             </ul>
           </div>

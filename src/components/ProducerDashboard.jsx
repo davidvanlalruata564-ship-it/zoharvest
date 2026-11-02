@@ -204,7 +204,7 @@ export default function ProducerDashboard({
             ₹{activeEscrow.toLocaleString('en-IN')}
           </div>
           <p className="text-[11px] text-amber-800 font-medium">
-            Locked in neutral escrow. Dispatched consignments awaiting delivery.
+            Active direct orders awaiting delivery confirmation.
           </p>
         </div>
 
@@ -583,7 +583,7 @@ export default function ProducerDashboard({
       <div className="bg-emerald-900 text-white rounded-3xl p-6 sm:p-8 flex flex-wrap items-center justify-between gap-6 shadow-md">
         <div className="space-y-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
-            Automated Escrow Bank Settlement
+            Direct Bank & GPay Payout Setup
           </span>
           <h4 className="text-lg font-bold text-white">
             {currentUser?.bankAccount?.bankName || 'Mizoram Rural Bank'}
@@ -596,13 +596,13 @@ export default function ProducerDashboard({
         <div className="flex items-center gap-3">
           <button
             onClick={onOpenProfile}
-            className="bg-emerald-800 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition border border-emerald-600"
+            className="bg-emerald-800 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition border border-emerald-600 cursor-pointer"
           >
             Update Bank Details
           </button>
           <div className="flex items-center gap-1.5 bg-emerald-950/80 px-3 py-2 rounded-xl border border-emerald-700 text-xs text-emerald-300 font-bold">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Escrow Autopay Ready</span>
+            <span>Direct Payouts Ready</span>
           </div>
         </div>
       </div>

@@ -22,8 +22,8 @@ export default function RFQModal({ product, onClose, onSubmitRFQ, t, currentLang
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const totalBidAmount = quantity * targetPrice;
-  const escrowFee = Math.round(totalBidAmount * 0.025);
-  const netSeller = totalBidAmount - escrowFee;
+  const platformFee = 0;
+  const netSeller = totalBidAmount;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -186,14 +186,14 @@ export default function RFQModal({ product, onClose, onSubmitRFQ, t, currentLang
             />
           </div>
 
-          {/* Dynamic Escrow Financial Summary Box */}
+          {/* Dynamic Financial Summary Box */}
           <div className="bg-emerald-50/80 rounded-2xl p-4 border border-emerald-200 space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-emerald-950 pb-2 border-b border-emerald-200/60">
               <span className="flex items-center gap-1.5">
                 <Calculator className="w-4 h-4 text-emerald-700" />
                 <span>Financial Ledger Projection (B2B Bulk)</span>
               </span>
-              <span className="text-emerald-800">2.5% Escrow Protection</span>
+              <span className="text-emerald-800">0% Platform Intermediary Cut</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-center pt-1">
@@ -204,14 +204,14 @@ export default function RFQModal({ product, onClose, onSubmitRFQ, t, currentLang
                 </span>
               </div>
               <div className="bg-white p-2 rounded-xl border border-emerald-100 shadow-xs">
-                <span className="text-[10px] text-slate-400 block font-medium">Escrow Fee (2.5%)</span>
+                <span className="text-[10px] text-slate-400 block font-medium">Platform Fee</span>
                 <span className="text-sm sm:text-base font-bold text-emerald-800 font-sans">
-                  ₹{escrowFee.toLocaleString('en-IN')}
+                  ₹0 (Free)
                 </span>
               </div>
               <div className="bg-white p-2 rounded-xl border border-emerald-100 shadow-xs">
-                <span className="text-[10px] text-slate-400 block font-medium">Net Farmer Payout</span>
-                <span className="text-sm sm:text-base font-extrabold text-amber-700 font-sans">
+                <span className="text-[10px] text-slate-400 block font-medium">Net Producer Payout</span>
+                <span className="text-sm sm:text-base font-extrabold text-emerald-700 font-sans">
                   ₹{netSeller.toLocaleString('en-IN')}
                 </span>
               </div>
@@ -219,7 +219,7 @@ export default function RFQModal({ product, onClose, onSubmitRFQ, t, currentLang
 
             <div className="flex items-center gap-2 text-[11px] text-emerald-800 pt-1">
               <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Funds are locked in Escrow. Seller is only paid after you inspect and verify delivery.</span>
+              <span>Direct settlement between buyer and seller via GPay or Bank Transfer. 0% platform fee.</span>
             </div>
           </div>
 

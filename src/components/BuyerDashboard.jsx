@@ -143,7 +143,7 @@ export default function BuyerDashboard({
           <div className="text-2xl sm:text-3xl font-extrabold text-blue-700 font-sans">
             {activeShipments} Consignments
           </div>
-          <span className="text-[11px] text-slate-500">Protected by ZOHARVEST Escrow</span>
+          <span className="text-[11px] text-slate-500">Active Direct Dispatches</span>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-2">
