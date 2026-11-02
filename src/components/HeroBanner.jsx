@@ -10,7 +10,16 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-export default function HeroBanner({ t, searchTerm, setSearchTerm, onNewListingClick, currentRole }) {
+export default function HeroBanner({ t, searchTerm, setSearchTerm, onNewListingClick, currentUser, onOpenAuth }) {
+  const handlePostClick = () => {
+    if (!currentUser) {
+      if (onOpenAuth) onOpenAuth();
+      else if (onNewListingClick) onNewListingClick();
+    } else {
+      if (onNewListingClick) onNewListingClick();
+    }
+  };
+
   return (
     <div className="relative overflow-hidden bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-3xl mx-4 sm:mx-6 lg:mx-8 my-6 shadow-xl border border-emerald-800/40">
       {/* Gentle ambient background glows */}
@@ -24,10 +33,7 @@ export default function HeroBanner({ t, searchTerm, setSearchTerm, onNewListingC
           <Sprout className="w-3.5 h-3.5 text-amber-400" />
           <span>Mizoram Farm-to-Buyer Direct Marketplace</span>
           <span className="text-emerald-400">•</span>
-          <span className="flex items-center gap-1 text-emerald-300">
-            <MapPin className="w-3 h-3 text-emerald-400" />
-            <span>11 Districts</span>
-          </span>
+          <span className="text-emerald-300">Fresh Harvest & Local Groceries</span>
         </div>
 
         {/* Minimalist Headline */}
@@ -50,15 +56,13 @@ export default function HeroBanner({ t, searchTerm, setSearchTerm, onNewListingC
               placeholder={t?.searchPlaceholder || 'Search ginger, bird’s eye chilli, turmeric, rice, wild honey...'}
               className="w-full pl-3 pr-3 py-2.5 text-slate-800 text-sm font-medium focus:outline-hidden"
             />
-            {currentRole === 'farmer' && (
-              <button
-                onClick={onNewListingClick}
-                className="shrink-0 flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition shadow-sm cursor-pointer"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>{t?.newListing || 'Post Listing'}</span>
-              </button>
-            )}
+            <button
+              onClick={handlePostClick}
+              className="shrink-0 flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition shadow-sm cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>{t?.newListing || 'Post Produce'}</span>
+            </button>
           </div>
         </div>
 
@@ -78,7 +82,7 @@ export default function HeroBanner({ t, searchTerm, setSearchTerm, onNewListingC
           </div>
           <div className="flex items-center gap-1.5 bg-emerald-900/50 px-3 py-1 rounded-full border border-emerald-800/60">
             <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-            <span>Verified Local Producers</span>
+            <span>Direct P2P Connections</span>
           </div>
         </div>
 

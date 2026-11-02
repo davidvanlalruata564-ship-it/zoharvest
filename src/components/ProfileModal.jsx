@@ -64,6 +64,9 @@ export default function ProfileModal({
   const [address, setAddress] = useState(currentUser.address || '');
   const [bio, setBio] = useState(currentUser.bio || '');
   const [gstinOrFpoNumber, setGstinOrFpoNumber] = useState(currentUser.verificationDoc || '');
+  const [instagram, setInstagram] = useState(currentUser.instagram || '');
+  const [website, setWebsite] = useState(currentUser.website || '');
+  const [twitter, setTwitter] = useState(currentUser.twitter || '');
 
   // Direct Payment & Bank fields
   const [bankName, setBankName] = useState(currentUser.bankAccount?.bankName || 'Mizoram Rural Bank');
@@ -106,6 +109,9 @@ export default function ProfileModal({
           address,
           bio,
           gstinOrFpoNumber,
+          instagram,
+          website,
+          twitter,
           bankAccount: {
             bankName,
             accountNumber,
@@ -473,6 +479,30 @@ export default function ProfileModal({
                 placeholder="Share your farm altitude, organic soil certifications, and bulk capacity..."
                 className="w-full py-2 px-3 text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
               />
+            </div>
+
+            {/* Social & Web Links for Profile Showcase */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Instagram Username / Handle</label>
+                <input
+                  type="text"
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                  placeholder="e.g. @mizo_organic_spices"
+                  className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Website or Portfolio Link</label>
+                <input
+                  type="text"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  placeholder="e.g. https://zoharvest.in"
+                  className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                />
+              </div>
             </div>
 
             <div className="pt-3 border-t border-slate-100 flex justify-end">

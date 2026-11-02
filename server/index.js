@@ -638,7 +638,7 @@ app.get('/api/products/:id', (req, res) => {
   res.json(product);
 });
 
-app.post('/api/products', authenticateToken, requireRole('farmer', 'admin'), async (req, res) => {
+app.post('/api/products', authenticateToken, async (req, res) => {
   const authUser = req.user;
 
   const {
@@ -749,8 +749,8 @@ app.post('/api/products', authenticateToken, requireRole('farmer', 'admin'), asy
   res.status(201).json(newProduct);
 });
 
-// Update existing product listing (Authenticated: Seller Owner or Admin)
-app.put('/api/products/:id', authenticateToken, requireRole('farmer', 'admin'), async (req, res) => {
+// Update existing product listing (Authenticated: Owner or Admin)
+app.put('/api/products/:id', authenticateToken, async (req, res) => {
   const product = products.find(p => p.id === req.params.id);
   if (!product) return res.status(404).json({ error: 'Product not found' });
 
@@ -842,8 +842,8 @@ app.put('/api/products/:id', authenticateToken, requireRole('farmer', 'admin'), 
   });
 });
 
-// Delete product listing (Authenticated: Seller Owner or Admin)
-app.delete('/api/products/:id', authenticateToken, requireRole('farmer', 'admin'), (req, res) => {
+// Delete product listing (Authenticated: Owner or Admin)
+app.delete('/api/products/:id', authenticateToken, (req, res) => {
   const index = products.findIndex(p => p.id === req.params.id);
   if (index === -1) return res.status(404).json({ error: 'Product not found' });
 
@@ -1878,7 +1878,10 @@ app.put('/api/users/profile', authenticateToken, (req, res) => {
     bio,
     avatarUrl,
     bankAccount,
-    gstinOrFpoNumber
+    gstinOrFpoNumber,
+    instagram,
+    website,
+    twitter
   } = req.body;
 
   if (name && name.trim()) user.name = name.trim();
@@ -1891,6 +1894,9 @@ app.put('/api/users/profile', authenticateToken, (req, res) => {
   if (address !== undefined) user.address = address.trim();
   if (bio !== undefined) user.bio = bio.trim();
   if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
+  if (instagram !== undefined) user.instagram = instagram.trim();
+  if (website !== undefined) user.website = website.trim();
+  if (twitter !== undefined) user.twitter = twitter.trim();
   if (gstinOrFpoNumber !== undefined && gstinOrFpoNumber.trim()) {
     user.verificationDoc = gstinOrFpoNumber.trim();
   }
@@ -2010,15 +2016,165 @@ app.get('/api/users/:id/public-profile', (req, res) => {
         ifsc: 'SBIN0RRMIGB',
         beneficiary: targetUser.organization || targetUser.name
       },
+      socialLinks: {
+        instagram: targetUser.instagram || '',
+        website: targetUser.website || '',
+        twitter: targetUser.twitter || ''
+      },
       stats: {
         postsCount: userProducts.length,
-        followersCount: 160 + (userProducts.length * 12),
-        followingCount: 11
+        followersCount: Array.isArray(targetUser.followers) ? targetUser.followers.length : (120 + userProducts.length * 5),
+        followingCount: Array.isArray(targetUser.following) ? targetUser.following.length : 8
       },
+      followers: targetUser.followers || [],
+      following: targetUser.following || [],
+      blockedUsers: targetUser.blockedUsers || [],
       posts: userProducts,
       collections
     }
   });
+});
+
+// Follow / Unfollow User API
+app.post('/api/users/:id/follow', authenticateToken, (req, res) => {
+  const targetId = req.params.id;
+  const currentUserId = req.user.id;
+
+  if (targetId === currentUserId) {
+    return res.status(400).json({ error: 'You cannot follow yourself.' });
+  }
+
+  const currentUser = users.find(u => u.id === currentUserId);
+  const targetUser = users.find(u => u.id === targetId || u.organization === targetId || u.name === targetId);
+
+  if (!currentUser) return res.status(404).json({ error: 'Current user not found.' });
+  if (!targetUser) return res.status(404).json({ error: 'Target user not found.' });
+
+  if (!Array.isArray(currentUser.following)) currentUser.following = [];
+  if (!Array.isArray(targetUser.followers)) targetUser.followers = [];
+
+  const isFollowing = currentUser.following.includes(targetUser.id);
+
+  if (isFollowing) {
+    // Unfollow
+    currentUser.following = currentUser.following.filter(id => id !== targetUser.id);
+    targetUser.followers = targetUser.followers.filter(id => id !== currentUser.id);
+  } else {
+    // Follow
+    currentUser.following.push(targetUser.id);
+    targetUser.followers.push(currentUser.id);
+  }
+
+  saveDb();
+
+  res.json({
+    success: true,
+    isFollowing: !isFollowing,
+    followersCount: targetUser.followers.length,
+    followingCount: targetUser.following ? targetUser.following.length : 0
+  });
+});
+
+// Network (Followers & Following lists) API
+app.get('/api/users/:id/network', (req, res) => {
+  const targetId = req.params.id;
+  const targetUser = users.find(u => u.id === targetId || u.organization === targetId || u.name === targetId);
+  if (!targetUser) return res.status(404).json({ error: 'User not found.' });
+
+  const followerIds = Array.isArray(targetUser.followers) ? targetUser.followers : [];
+  const followingIds = Array.isArray(targetUser.following) ? targetUser.following : [];
+
+  const mapToCard = (uid) => {
+    const u = users.find(x => x.id === uid);
+    if (!u) {
+      return {
+        id: uid,
+        name: 'ZOHARVEST Member',
+        username: 'member',
+        organization: 'Community Member',
+        district: 'Champhai',
+        avatarUrl: null
+      };
+    }
+    const cleanUsername = (u.organization || u.name || 'member').toLowerCase().replace(/[^a-z0-9]/g, '_');
+    return {
+      id: u.id,
+      name: u.name,
+      username: cleanUsername,
+      organization: u.organization || u.name,
+      district: u.district || 'Champhai',
+      avatarUrl: u.avatarUrl || null,
+      isVerified: Boolean(u.isVerified)
+    };
+  };
+
+  res.json({
+    success: true,
+    followers: followerIds.map(mapToCard),
+    following: followingIds.map(mapToCard)
+  });
+});
+
+// Block / Unblock User API
+app.post('/api/users/:id/block', authenticateToken, (req, res) => {
+  const targetId = req.params.id;
+  const currentUserId = req.user.id;
+
+  if (targetId === currentUserId) {
+    return res.status(400).json({ error: 'You cannot block yourself.' });
+  }
+
+  const currentUser = users.find(u => u.id === currentUserId);
+  const targetUser = users.find(u => u.id === targetId || u.organization === targetId || u.name === targetId);
+
+  if (!currentUser) return res.status(404).json({ error: 'Current user not found.' });
+  if (!Array.isArray(currentUser.blockedUsers)) currentUser.blockedUsers = [];
+
+  const actualTargetId = targetUser ? targetUser.id : targetId;
+  const isBlocked = currentUser.blockedUsers.includes(actualTargetId);
+
+  if (isBlocked) {
+    // Unblock
+    currentUser.blockedUsers = currentUser.blockedUsers.filter(id => id !== actualTargetId);
+  } else {
+    // Block
+    currentUser.blockedUsers.push(actualTargetId);
+    // Automatically unfollow if previously following
+    if (Array.isArray(currentUser.following)) {
+      currentUser.following = currentUser.following.filter(id => id !== actualTargetId);
+    }
+    if (targetUser && Array.isArray(targetUser.followers)) {
+      targetUser.followers = targetUser.followers.filter(id => id !== currentUser.id);
+    }
+  }
+
+  saveDb();
+
+  res.json({
+    success: true,
+    isBlocked: !isBlocked,
+    message: !isBlocked ? 'Account blocked.' : 'Account unblocked.'
+  });
+});
+
+// Get My Blocked Users List API
+app.get('/api/users/me/blocked', authenticateToken, (req, res) => {
+  const currentUser = users.find(u => u.id === req.user.id);
+  if (!currentUser) return res.status(404).json({ error: 'User not found.' });
+
+  const blockedIds = Array.isArray(currentUser.blockedUsers) ? currentUser.blockedUsers : [];
+  const blockedList = blockedIds.map(uid => {
+    const u = users.find(x => x.id === uid);
+    return {
+      id: uid,
+      name: u ? u.name : 'Blocked Account',
+      username: u ? (u.organization || u.name || 'member').toLowerCase().replace(/[^a-z0-9]/g, '_') : 'member',
+      avatarUrl: u ? u.avatarUrl : null,
+      district: u ? u.district : 'Mizoram'
+    };
+  });
+
+  res.json({ success: true, blocked: blockedList });
 });
 
 // Explore Sellers / Growers Directory API

@@ -3,22 +3,15 @@ import Navbar from './components/Navbar';
 import HeroBanner from './components/HeroBanner';
 import MarketplaceCatalog from './components/MarketplaceCatalog';
 import ProductDetailModal from './components/ProductDetailModal';
-import RFQModal from './components/RFQModal';
-import RFQNegotiationHub from './components/RFQNegotiationHub';
-import EscrowPaymentModal from './components/EscrowPaymentModal';
-import OrdersAndEscrowTracker from './components/OrdersAndEscrowTracker';
-import ProducerDashboard from './components/ProducerDashboard';
-import BuyerDashboard from './components/BuyerDashboard';
+import ProfilePage from './components/ProfilePage';
+import MobileBottomNav from './components/MobileBottomNav';
 import AdminVerificationHub from './components/AdminVerificationHub';
 import AboutPage from './components/AboutPage';
 import DonationPage from './components/DonationPage';
-import RevenueModelExplainer from './components/RevenueModelExplainer';
 import NotificationsDrawer from './components/NotificationsDrawer';
 import NewListingModal from './components/NewListingModal';
-import POPrintModal from './components/POPrintModal';
 import AuthModal from './components/AuthModal';
 import ProfileModal from './components/ProfileModal';
-import PublicProfileModal from './components/PublicProfileModal';
 
 import { translations } from './i18n/translations';
 import { 
@@ -72,10 +65,12 @@ export default function App() {
   };
 
   const handleOpenUserProfile = (sellerId, preferredTab = 'posts') => {
-    const targetId = sellerId || currentUser?.id || currentUser?.organization || currentUser?.name;
-    if (!targetId) return;
-    setViewingSellerId(targetId);
+    setViewingSellerId(sellerId || null);
     setViewingProfileInitialTab(preferredTab);
+    setActiveTab('profile');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
   const [authToken, setAuthToken] = useState(() => localStorage.getItem('zh_token') || null);
   const [authenticatedUser, setAuthenticatedUser] = useState(() => {
@@ -183,6 +178,8 @@ export default function App() {
   const filteredProducts = products.filter(p => {
     // Hide quarantined products from public marketplace view
     if (p.moderationStatus === 'quarantined') return false;
+    // Hide posts from blocked users
+    if (currentUser?.blockedUsers && p.sellerId && currentUser.blockedUsers.includes(p.sellerId)) return false;
     if (selectedCategory !== 'all' && p.category !== selectedCategory) return false;
     if (selectedDistrict !== 'all' && p.district.toLowerCase() !== selectedDistrict.toLowerCase()) return false;
     if (selectedGrade !== 'all' && !p.grade.toLowerCase().includes(selectedGrade.toLowerCase())) return false;
@@ -625,7 +622,8 @@ export default function App() {
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               onNewListingClick={() => setIsNewListingOpen(true)}
-              currentRole={currentRole}
+              currentUser={currentUser}
+              onOpenAuth={() => setIsAuthOpen(true)}
             />
 
             <MarketplaceCatalog
@@ -638,7 +636,6 @@ export default function App() {
               setSelectedDistrict={setSelectedDistrict}
               selectedGrade={selectedGrade}
               setSelectedGrade={setSelectedGrade}
-              onOpenRFQModal={(p) => setRfqProduct(p)}
               onOpenProductDetail={(p) => setSelectedProductDetail(p)}
               onOpenUserProfile={handleOpenUserProfile}
               onEditProduct={(p) => {
@@ -646,114 +643,56 @@ export default function App() {
                 setIsNewListingOpen(true);
               }}
               currentUser={currentUser}
-              onDirectOrder={(p) => setRfqProduct(p)}
               t={t}
               currentLang={currentLang}
             />
           </>
         )}
 
-        {/* RFQ Negotiation Engine Tab */}
-        {activeTab === 'rfqs' && (
-          <RFQNegotiationHub
-            rfqs={rfqs}
-            onCounterOffer={handleCounterOffer}
-            onAcceptRFQ={handleAcceptRFQ}
-            onGeneratePO={handleGeneratePO}
-            currentRole={currentRole}
-            t={t}
-            currentLang={currentLang}
-          />
-        )}
-
-        {/* Orders & Escrow Pipeline Tab */}
-        {activeTab === 'orders' && (
-          <OrdersAndEscrowTracker
-            orders={orders}
-            onOpenEscrowModal={(o) => setEscrowModalOrder(o)}
-            onDispatchOrder={handleDispatchOrder}
-            onVerifyAndRelease={handleVerifyAndRelease}
-            onViewPO={(o) => setPoModalOrder(o)}
-            currentRole={currentRole}
-            t={t}
-            currentLang={currentLang}
-          />
-        )}
-
-        {/* Dynamic Role-Based Dashboard Tab */}
-        {activeTab === 'dashboard' && (
-          !authenticatedUser ? (
+        {/* Unified Profile & Inventory Showcase Tab */}
+        {(activeTab === 'profile' || activeTab === 'dashboard') && (
+          !viewingSellerId && !authenticatedUser ? (
             <div className="max-w-md mx-auto my-16 p-8 bg-white rounded-3xl border border-slate-200 text-center shadow-sm">
               <div className="w-14 h-14 bg-emerald-100 text-emerald-800 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-4">
-                🔒
+                👤
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">Sign In Required</h3>
               <p className="text-sm text-slate-500 mb-6">
-                Please sign in or create an account to access your personal dashboard, active negotiations, and escrow balances.
+                Please sign in to view your profile, manage harvest posts, check followers, and share your contact card with buyers.
               </p>
               <button
                 onClick={() => setIsAuthOpen(true)}
-                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition shadow-md"
+                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition shadow-md cursor-pointer"
               >
                 Sign In / Register
               </button>
             </div>
           ) : (
-            <>
-              {currentUser?.role === 'farmer' && (
-                <ProducerDashboard
-                  currentUser={currentUser}
-                  products={products}
-                  orders={orders}
-                  rfqs={rfqs}
-                  onOpenNewListing={() => {
-                    setEditingProduct(null);
-                    setIsNewListingOpen(true);
-                  }}
-                  onEditProduct={(prod) => {
-                    setEditingProduct(prod);
-                    setIsNewListingOpen(true);
-                  }}
-                  onOpenProfile={handleOpenProfile}
-                  onOpenPublicProfile={handleOpenUserProfile}
-                  onUpdateProduct={handleUpdateProduct}
-                  onDeleteProduct={handleDeleteProduct}
-                  onNavigateTab={(tab) => setActiveTab(tab)}
-                  t={t}
-                  currentLang={currentLang}
-                />
-              )}
-              {currentUser?.role === 'buyer' && (
-                <BuyerDashboard
-                  currentUser={currentUser}
-                  orders={orders}
-                  rfqs={rfqs}
-                  onOpenProfile={handleOpenProfile}
-                  onNavigateTab={(tab) => setActiveTab(tab)}
-                  t={t}
-                  currentLang={currentLang}
-                />
-              )}
-              {currentUser?.role === 'admin' && (
-                <AdminVerificationHub
-                  users={users}
-                  stats={stats}
-                  orders={orders}
-                  products={products}
-                  onVerifyUser={handleVerifyKYC}
-                  onAdminUpdateUser={handleAdminUpdateUser}
-                  onQuarantineProduct={handleQuarantineProduct}
-                  onDelistProduct={handleDeleteProduct}
-                  onResetDatabase={handleResetDatabase}
-                  t={t}
-                  currentLang={currentLang}
-                />
-              )}
-            </>
+            <ProfilePage
+              profileUserId={viewingSellerId || (authenticatedUser ? authenticatedUser.id : null)}
+              currentUser={currentUser}
+              products={products}
+              onSelectProduct={(p) => setSelectedProductDetail(p)}
+              onOpenEditProfile={() => handleOpenProfile('general')}
+              onOpenNewListing={() => {
+                setEditingProduct(null);
+                setIsNewListingOpen(true);
+              }}
+              onEditProduct={(prod) => {
+                setEditingProduct(prod);
+                setIsNewListingOpen(true);
+              }}
+              onDeleteProduct={handleDeleteProduct}
+              onBack={() => {
+                setViewingSellerId(null);
+                setActiveTab('marketplace');
+              }}
+              onLogout={handleLogout}
+            />
           )
         )}
 
-        {/* Admin Verification & Ledger Tab */}
+        {/* Admin Verification & Moderation Tab */}
         {activeTab === 'admin' && (
           authenticatedUser?.role === 'admin' ? (
             <AdminVerificationHub
@@ -776,11 +715,11 @@ export default function App() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">Admin Authorization Required</h3>
               <p className="text-sm text-slate-500 mb-6">
-                Only authenticated ZOHARVEST platform administrators may access KYC compliance verification and Escrow ledger audits.
+                Only authenticated platform administrators may access KYC compliance verification and user audits.
               </p>
               <button
                 onClick={() => setIsAuthOpen(true)}
-                className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition shadow-md"
+                className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition shadow-md cursor-pointer"
               >
                 Sign In as Admin
               </button>
@@ -791,7 +730,10 @@ export default function App() {
         {/* Completely Free About Us Tab */}
         {(activeTab === 'business' || activeTab === 'about') && (
           <AboutPage
-            onNavigateTab={(tab) => setActiveTab(tab)}
+            onNavigateTab={(tab) => {
+              setViewingSellerId(null);
+              setActiveTab(tab);
+            }}
             t={t}
             currentLang={currentLang}
           />
@@ -821,59 +763,6 @@ export default function App() {
           }}
           t={t}
           currentLang={currentLang}
-        />
-      )}
-
-      {viewingSellerId && (
-        <PublicProfileModal
-          isOpen={Boolean(viewingSellerId)}
-          onClose={() => setViewingSellerId(null)}
-          sellerId={viewingSellerId}
-          products={products}
-          onSelectProduct={(p) => setSelectedProductDetail(p)}
-          currentUser={currentUser}
-          initialTab={viewingProfileInitialTab}
-          onOpenEditProfile={(tab = 'general') => {
-            setViewingSellerId(null);
-            handleOpenProfile(tab);
-          }}
-          onEditProduct={(p) => {
-            setViewingSellerId(null);
-            setEditingProduct(p);
-            setIsNewListingOpen(true);
-          }}
-          onDeleteProduct={handleDeleteProduct}
-          onOpenNewListing={() => {
-            setViewingSellerId(null);
-            setEditingProduct(null);
-            setIsNewListingOpen(true);
-          }}
-        />
-      )}
-
-      {rfqProduct && (
-        <RFQModal
-          product={rfqProduct}
-          onClose={() => setRfqProduct(null)}
-          onSubmitRFQ={handleCreateRFQ}
-          t={t}
-          currentLang={currentLang}
-        />
-      )}
-
-      {escrowModalOrder && (
-        <EscrowPaymentModal
-          order={escrowModalOrder}
-          onClose={() => setEscrowModalOrder(null)}
-          onDepositSuccess={handleEscrowDepositSuccess}
-          t={t}
-        />
-      )}
-
-      {poModalOrder && (
-        <POPrintModal
-          order={poModalOrder}
-          onClose={() => setPoModalOrder(null)}
         />
       )}
 
@@ -973,6 +862,32 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Mobile App-Style Bottom Navigation */}
+      <MobileBottomNav
+        activeTab={activeTab === 'business' ? 'about' : activeTab}
+        onNavigate={(tab) => {
+          if (tab === 'about') {
+            setViewingSellerId(null);
+            setActiveTab('business');
+          } else if (tab === 'profile') {
+            setViewingSellerId(null);
+            setActiveTab('profile');
+          } else {
+            setViewingSellerId(null);
+            setActiveTab(tab);
+          }
+          if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }}
+        onOpenNewListing={() => {
+          setEditingProduct(null);
+          setIsNewListingOpen(true);
+        }}
+        currentUser={currentUser}
+        onOpenAuth={() => setIsAuthOpen(true)}
+      />
 
     </div>
   );

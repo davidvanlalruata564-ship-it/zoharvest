@@ -3,27 +3,23 @@ import {
   Sprout, 
   Globe, 
   Bell, 
-  ShieldCheck, 
-  Briefcase, 
   Store, 
-  FileText, 
   Menu, 
   X,
-  TrendingUp,
   UserCheck,
   User,
   LogOut,
   LogIn,
   Settings,
-  Heart
+  Heart,
+  Sparkles,
+  Share2
 } from 'lucide-react';
 
 export default function Navbar({ 
   currentLang, 
   setCurrentLang, 
   t, 
-  currentRole, 
-  setCurrentRole, 
   activeTab, 
   setActiveTab,
   notifications,
@@ -38,16 +34,36 @@ export default function Navbar({
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const handleNavClick = (tab) => {
+    if (tab === 'profile') {
+      if (!authenticatedUser) {
+        onOpenAuthModal();
+      } else {
+        if (onOpenUserProfile) {
+          onOpenUserProfile(null);
+        } else {
+          setActiveTab('profile');
+        }
+      }
+    } else {
+      if (onOpenUserProfile && tab === 'marketplace') {
+        onOpenUserProfile(null); // clears viewing other seller
+      }
+      setActiveTab(tab);
+    }
+    setMobileMenuOpen(false);
+  };
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/80 shadow-xs">
       {/* Top Banner: Regional Authenticity & Quick Language */}
       <div className="bg-emerald-950 text-emerald-100/90 text-xs py-1.5 px-4 sm:px-8 flex justify-between items-center font-medium">
         <div className="flex items-center gap-2">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-          <span>Mizoram Farm-Direct Wholesale • 0% Middlemen Fees</span>
+          <span>Mizoram Farm-Direct Marketplace • Direct P2P Wholesale</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="hidden md:inline text-emerald-300/80 text-[11px]">Direct from 11 Districts</span>
+          <span className="hidden md:inline text-emerald-300/80 text-[11px]">Grassroots Growers & Pantry</span>
           <button 
             onClick={() => setCurrentLang(currentLang === 'en' ? 'mz' : 'en')}
             className="flex items-center gap-1.5 bg-emerald-900/90 hover:bg-emerald-800 text-amber-300 px-2.5 py-0.5 rounded-full text-xs font-semibold transition cursor-pointer"
@@ -63,7 +79,7 @@ export default function Navbar({
         <div className="flex items-center justify-between h-16 sm:h-18">
           
           {/* Logo & Identity */}
-          <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => setActiveTab('marketplace')}>
+          <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => handleNavClick('marketplace')}>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-800 to-emerald-950 flex items-center justify-center text-white shadow-sm">
               <Sprout className="w-5 h-5 text-amber-400" />
             </div>
@@ -77,78 +93,40 @@ export default function Navbar({
                 </span>
               </div>
               <p className="text-[11px] text-stone-500 font-medium hidden sm:block">
-                {t.tagline}
+                {t.tagline || 'Mizoram Farm-to-Buyer Direct Marketplace'}
               </p>
             </div>
           </div>
 
           {/* Center Navigation Links (Desktop) */}
-          <nav className="hidden lg:flex items-center gap-1 bg-stone-100/80 p-1 rounded-xl border border-stone-200/70">
+          <nav className="hidden lg:flex items-center gap-1.5 bg-stone-100/80 p-1.5 rounded-2xl border border-stone-200/70">
             <button
-              onClick={() => setActiveTab('marketplace')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+              onClick={() => handleNavClick('marketplace')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
                 activeTab === 'marketplace'
                   ? 'bg-emerald-800 text-white shadow-xs'
                   : 'text-stone-600 hover:text-emerald-900 hover:bg-white/70'
               }`}
             >
               <Store className="w-3.5 h-3.5" />
-              <span>{t.navMarketplace}</span>
+              <span>{t.navMarketplace || 'Marketplace'}</span>
             </button>
 
             <button
-              onClick={() => {
-                if (!authenticatedUser) {
-                  onOpenAuthModal();
-                } else {
-                  setActiveTab('dashboard');
-                }
-              }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                activeTab === 'dashboard'
-                  ? 'bg-emerald-800 text-white shadow-xs'
-                  : 'text-stone-600 hover:text-emerald-900 hover:bg-white/70'
-              }`}
-            >
-              <Briefcase className="w-3.5 h-3.5" />
-              <span>
-                {authenticatedUser?.role === 'buyer' 
-                  ? 'Buyer Hub' 
-                  : authenticatedUser?.role === 'admin' 
-                  ? 'Admin Hub' 
-                  : t.navDashboard}
-              </span>
-            </button>
-
-            {authenticatedUser?.role === 'admin' && (
-              <button
-                onClick={() => setActiveTab('admin')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                  activeTab === 'admin'
-                    ? 'bg-emerald-800 text-white shadow-xs'
-                    : 'text-stone-600 hover:text-emerald-900 hover:bg-white/70'
-                }`}
-              >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>{t.navAdmin}</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => setActiveTab('business')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+              onClick={() => handleNavClick('business')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
                 activeTab === 'business'
                   ? 'bg-emerald-800 text-white shadow-xs'
                   : 'text-stone-600 hover:text-emerald-900 hover:bg-white/70'
               }`}
             >
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>{t.navBusinessModel}</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>{t.navBusinessModel || 'About Us'}</span>
             </button>
 
             <button
-              onClick={() => setActiveTab('donate')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+              onClick={() => handleNavClick('donate')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
                 activeTab === 'donate'
                   ? 'bg-emerald-800 text-white shadow-xs'
                   : 'text-amber-800 bg-amber-50/70 hover:bg-amber-100/70 border border-amber-200/60'
@@ -157,6 +135,32 @@ export default function Navbar({
               <Heart className="w-3.5 h-3.5 text-amber-600 fill-amber-500/20" />
               <span>{t.navDonate || 'Donate'}</span>
             </button>
+
+            <button
+              onClick={() => handleNavClick('profile')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                activeTab === 'profile'
+                  ? 'bg-emerald-800 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-emerald-900 hover:bg-white/70'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>My Profile & Posts</span>
+            </button>
+
+            {authenticatedUser?.role === 'admin' && (
+              <button
+                onClick={() => handleNavClick('admin')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                  activeTab === 'admin'
+                    ? 'bg-emerald-800 text-white shadow-xs'
+                    : 'text-stone-600 hover:text-emerald-900 hover:bg-white/70'
+                }`}
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Admin</span>
+              </button>
+            )}
           </nav>
 
           {/* Right Action: Profile & Notifications */}
@@ -164,35 +168,32 @@ export default function Navbar({
 
             {authenticatedUser ? (
               <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl border border-stone-200/80 shadow-2xs">
-                {onOpenUserProfile && (
-                  <button
-                    onClick={() => onOpenUserProfile(authenticatedUser?.id || authenticatedUser?.organization || authenticatedUser?.name)}
-                    className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 transition cursor-pointer"
-                    title="View your public profile showcase"
-                  >
-                    <Store className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>My Profile</span>
-                  </button>
-                )}
-
                 <button
-                  onClick={onOpenProfile}
+                  onClick={() => handleNavClick('profile')}
                   className="flex items-center gap-2 text-left hover:opacity-85 transition cursor-pointer"
-                  title="Customize Profile"
+                  title="View your Instagram-style Profile & Posts"
                 >
-                  <div className="w-7 h-7 rounded-full bg-emerald-800 text-amber-300 flex items-center justify-center font-bold text-xs shadow-xs">
-                    {authenticatedUser?.name ? authenticatedUser.name[0].toUpperCase() : 'U'}
+                  <div className="w-7 h-7 rounded-full bg-emerald-800 text-amber-300 flex items-center justify-center font-bold text-xs shadow-xs overflow-hidden">
+                    {authenticatedUser?.avatarUrl ? (
+                      <img src={authenticatedUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span>{authenticatedUser?.name ? authenticatedUser.name[0].toUpperCase() : 'U'}</span>
+                    )}
                   </div>
                   <div className="hidden sm:block">
-                    <div className="font-bold text-stone-900 text-xs truncate max-w-[110px]">{authenticatedUser?.name || 'User'}</div>
-                    <div className="text-[10px] text-emerald-800 font-semibold uppercase">{authenticatedUser?.role || 'buyer'}</div>
+                    <div className="font-bold text-stone-900 text-xs truncate max-w-[120px]">
+                      {authenticatedUser?.name || 'My Profile'}
+                    </div>
+                    <div className="text-[10px] text-emerald-800 font-semibold truncate max-w-[120px]">
+                      {authenticatedUser?.organization || authenticatedUser?.district || 'Profile'}
+                    </div>
                   </div>
                 </button>
 
                 <button
                   onClick={onOpenProfile}
-                  title="Profile Settings"
-                  className="p-1 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition"
+                  title="Profile Settings & Payment Details"
+                  className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500 hover:text-stone-800 transition cursor-pointer"
                 >
                   <Settings className="w-3.5 h-3.5" />
                 </button>
@@ -200,7 +201,7 @@ export default function Navbar({
                 <button
                   onClick={onLogout}
                   title="Sign Out"
-                  className="p-1 rounded-lg hover:bg-red-50 text-stone-400 hover:text-red-600 transition"
+                  className="p-1.5 rounded-lg hover:bg-red-50 text-stone-400 hover:text-red-600 transition cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
@@ -218,7 +219,7 @@ export default function Navbar({
             {/* Notification Bell */}
             <button
               onClick={() => setIsNotifOpen(true)}
-              className="relative p-2.5 rounded-xl bg-stone-100 hover:bg-emerald-50 text-stone-600 hover:text-emerald-900 transition"
+              className="relative p-2.5 rounded-xl bg-stone-100 hover:bg-emerald-50 text-stone-600 hover:text-emerald-900 transition cursor-pointer"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
@@ -232,7 +233,7 @@ export default function Navbar({
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg text-stone-700 hover:bg-stone-100"
+              className="lg:hidden p-2 rounded-lg text-stone-700 hover:bg-stone-100 cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -245,52 +246,58 @@ export default function Navbar({
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-stone-200 bg-white px-4 pt-3 pb-6 space-y-2 shadow-lg">
           <div className="text-[11px] font-bold uppercase text-stone-400 px-2 py-1 tracking-wider">Navigation</div>
+          
           <button
-            onClick={() => { setActiveTab('marketplace'); setMobileMenuOpen(false); }}
-            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 ${activeTab === 'marketplace' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'}`}
+            onClick={() => handleNavClick('marketplace')}
+            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 ${
+              activeTab === 'marketplace' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'
+            }`}
           >
             <Store className="w-4 h-4" />
-            <span>{t.navMarketplace}</span>
+            <span>Marketplace</span>
           </button>
+
           <button
-            onClick={() => { 
-              setMobileMenuOpen(false);
-              if (!authenticatedUser) { onOpenAuthModal(); } else { setActiveTab('dashboard'); }
-            }}
-            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 ${activeTab === 'dashboard' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'}`}
+            onClick={() => handleNavClick('business')}
+            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 ${
+              activeTab === 'business' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'
+            }`}
           >
-            <Briefcase className="w-4 h-4" />
-            <span>
-              {authenticatedUser?.role === 'buyer' 
-                ? 'Buyer Hub' 
-                : authenticatedUser?.role === 'admin' 
-                ? 'Admin Hub' 
-                : t.navDashboard}
-            </span>
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            <span>About Us</span>
           </button>
-          {authenticatedUser?.role === 'admin' && (
-            <button
-              onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); }}
-              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 ${activeTab === 'admin' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'}`}
-            >
-              <UserCheck className="w-4 h-4" />
-              <span>{t.navAdmin}</span>
-            </button>
-          )}
+
           <button
-            onClick={() => { setActiveTab('business'); setMobileMenuOpen(false); }}
-            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 ${activeTab === 'business' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'}`}
-          >
-            <TrendingUp className="w-4 h-4" />
-            <span>{t.navBusinessModel}</span>
-          </button>
-          <button
-            onClick={() => { setActiveTab('donate'); setMobileMenuOpen(false); }}
-            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 ${activeTab === 'donate' ? 'bg-emerald-800 text-white' : 'text-amber-800 bg-amber-50/70 hover:bg-amber-100/70'}`}
+            onClick={() => handleNavClick('donate')}
+            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 ${
+              activeTab === 'donate' ? 'bg-emerald-800 text-white' : 'text-amber-800 bg-amber-50/70 hover:bg-amber-100/70'
+            }`}
           >
             <Heart className="w-4 h-4 text-amber-600 fill-amber-500/20" />
-            <span>{t.navDonate || 'Donate'}</span>
+            <span>Donate</span>
           </button>
+
+          <button
+            onClick={() => handleNavClick('profile')}
+            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 ${
+              activeTab === 'profile' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'
+            }`}
+          >
+            <User className="w-4 h-4" />
+            <span>My Profile & Posts</span>
+          </button>
+
+          {authenticatedUser?.role === 'admin' && (
+            <button
+              onClick={() => handleNavClick('admin')}
+              className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                activeTab === 'admin' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'
+              }`}
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>Admin Hub</span>
+            </button>
+          )}
 
           {/* Mobile Auth button */}
           <div className="pt-2 border-t border-stone-200">
@@ -299,36 +306,27 @@ export default function Navbar({
                 <div className="flex items-center justify-between p-2.5 bg-stone-50 rounded-xl">
                   <div>
                     <div className="text-xs font-bold text-stone-800">{authenticatedUser?.name || 'User'}</div>
-                    <div className="text-[10px] text-emerald-800 font-bold uppercase">
-                      {(authenticatedUser?.role || 'buyer').toUpperCase()} • {authenticatedUser?.organization || 'Enterprise'}
+                    <div className="text-[10px] text-emerald-800 font-bold">
+                      {authenticatedUser?.organization || authenticatedUser?.district || 'Active Profile'}
                     </div>
                   </div>
-                  <button onClick={onLogout} className="text-xs font-bold text-red-600 hover:underline">Sign Out</button>
-                </div>
-                {onOpenUserProfile && (
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onOpenUserProfile(authenticatedUser?.id || authenticatedUser?.organization || authenticatedUser?.name);
-                    }}
-                    className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-emerald-200"
-                  >
-                    <Store className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>View My Public Profile</span>
+                  <button onClick={onLogout} className="text-xs font-bold text-red-600 hover:underline cursor-pointer">
+                    Sign Out
                   </button>
-                )}
+                </div>
+                
                 <button
                   onClick={() => { setMobileMenuOpen(false); onOpenProfile(); }}
-                  className="w-full bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
+                  className="w-full bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
                 >
                   <Settings className="w-3.5 h-3.5" />
-                  <span>Customize Profile</span>
+                  <span>Edit Profile & Payment Details</span>
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => { onOpenAuthModal(); setMobileMenuOpen(false); }}
-                className="w-full bg-emerald-800 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                className="w-full bg-emerald-800 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
                 <LogIn className="w-4 h-4 text-amber-300" />
                 <span>Sign In or Create Account</span>
