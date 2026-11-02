@@ -12,19 +12,33 @@ import {
   MessageCircle,
   Phone,
   CreditCard,
-  ExternalLink
+  ExternalLink,
+  User,
+  Edit3,
+  Sparkles
 } from 'lucide-react';
 
 export default function ProductDetailModal({ 
   product, 
   onClose, 
   onOpenUserProfile, 
+  currentUser,
+  onEditProduct,
   t, 
   currentLang 
 }) {
   if (!product) return null;
 
   const [showDirectPayHint, setShowDirectPayHint] = useState(false);
+
+  // Website recognizes own listing
+  const isOwnProduct = Boolean(
+    currentUser && product && (
+      (currentUser.id && product.sellerId && String(currentUser.id) === String(product.sellerId)) ||
+      (currentUser.organization && product.fpoName && currentUser.organization.toLowerCase() === product.fpoName.toLowerCase()) ||
+      (currentUser.name && product.fpoName && currentUser.name.toLowerCase() === product.fpoName.toLowerCase())
+    )
+  );
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -57,6 +71,13 @@ export default function ProductDetailModal({
                 <p className="text-xs text-emerald-300 mt-1 max-w-xs">Text-only verified producer harvest listing.</p>
               </div>
             )}
+            {isOwnProduct && (
+              <div className="absolute top-4 left-4 z-10 bg-emerald-950/90 text-amber-300 text-[11px] font-black px-3 py-1 rounded-full border border-emerald-400/50 shadow-md flex items-center gap-1.5 backdrop-blur-xs">
+                <User className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Your Listing (You)</span>
+              </div>
+            )}
+
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex flex-col justify-end p-6 text-white">
               <h4 
                 onClick={() => {
@@ -64,11 +85,13 @@ export default function ProductDetailModal({
                   if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName);
                 }}
                 className="text-sm font-bold text-emerald-300 flex items-center gap-1.5 cursor-pointer hover:underline w-fit"
-                title="View Seller Profile"
+                title={isOwnProduct ? "View Your Public Storefront" : "View Seller Profile"}
               >
                 <Building className="w-4 h-4" />
                 <span>{product.fpoName}</span>
-                <span className="text-[10px] text-amber-300 font-normal">(@View Profile)</span>
+                <span className="text-[10px] text-amber-300 font-normal">
+                  {isOwnProduct ? '(@Your Profile)' : '(@View Profile)'}
+                </span>
               </h4>
               <p className="text-xs text-slate-300 flex items-center gap-1 mt-0.5">
                 <MapPin className="w-3.5 h-3.5 text-amber-400" />
@@ -170,39 +193,83 @@ export default function ProductDetailModal({
             {/* Direct Contact & P2P Settlement Actions */}
             <div className="pt-4 border-t border-slate-100 space-y-2.5">
               
+              {isOwnProduct && (
+                <div className="bg-emerald-50 border border-emerald-200/90 rounded-2xl p-3 flex items-start gap-2.5 text-xs text-emerald-950">
+                  <Sparkles className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-extrabold text-emerald-950 block">This is your active listing</span>
+                    <p className="text-[11px] text-emerald-800/90 mt-0.5">
+                      Wholesale buyers reach you directly on your WhatsApp or phone, and pay to your GPay or Bank Account.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <button
                 onClick={() => {
                   onClose();
                   if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName);
                 }}
-                className="w-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-950 font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                className={`w-full font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs ${
+                  isOwnProduct 
+                    ? 'bg-emerald-900 hover:bg-emerald-800 text-white' 
+                    : 'bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-950'
+                }`}
               >
-                <span>👤 View Seller Profile & Instagram Showcase</span>
-                <span className="text-emerald-700 font-normal">➜</span>
+                <span>{isOwnProduct ? '👤 View Your Public Profile & Showcase' : '👤 View Seller Profile & Instagram Showcase'}</span>
+                <span className={isOwnProduct ? 'text-amber-300 font-normal' : 'text-emerald-700 font-normal'}>➜</span>
               </button>
 
-              <div className="flex items-center gap-2">
-                <a
-                  href={`https://wa.me/919436100000?text=${encodeURIComponent(`Hello ${product.fpoName}, I found your listing "${product.name}" on ZOHARVEST. Is it available for dispatch?`)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Chat on WhatsApp</span>
-                </a>
+              {isOwnProduct ? (
+                <div className="flex items-center gap-2">
+                  {onEditProduct && (
+                    <button
+                      onClick={() => {
+                        onClose();
+                        onEditProduct(product);
+                      }}
+                      className="flex-1 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold py-2.5 px-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      <span>Edit This Listing</span>
+                    </button>
+                  )}
 
-                <button
-                  onClick={() => {
-                    onClose();
-                    if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName, 'payment');
-                  }}
-                  className="bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  <span>GPay / Bank Info</span>
-                </button>
-              </div>
+                  <button
+                    onClick={() => {
+                      onClose();
+                      if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName, 'payment');
+                    }}
+                    className="flex-1 bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold py-2.5 px-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>Your Payment Info</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`https://wa.me/919436100000?text=${encodeURIComponent(`Hello ${product.fpoName}, I found your listing "${product.name}" on ZOHARVEST. Is it available for dispatch?`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Chat on WhatsApp</span>
+                  </a>
+
+                  <button
+                    onClick={() => {
+                      onClose();
+                      if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName, 'payment');
+                    }}
+                    className="bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>GPay / Bank Info</span>
+                  </button>
+                </div>
+              )}
 
               <div className="text-[11px] text-slate-400 text-center font-medium">
                 Direct wholesale settlement • 0% platform intermediary commission

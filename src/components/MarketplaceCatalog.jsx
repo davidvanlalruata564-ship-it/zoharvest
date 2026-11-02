@@ -10,7 +10,8 @@ import {
   Apple,
   Trees,
   Palette,
-  Layers
+  Layers,
+  User
 } from 'lucide-react';
 
 const CATEGORY_ICONS = {
@@ -37,6 +38,8 @@ export default function MarketplaceCatalog({
   onOpenProductDetail,
   onOpenUserProfile,
   onDirectOrder,
+  onEditProduct,
+  currentUser,
   t,
   currentLang
 }) {
@@ -122,16 +125,33 @@ export default function MarketplaceCatalog({
               ((product.marketPriceComparison - product.pricePerUnit) / product.marketPriceComparison) * 100
             );
 
+            const isOwnListing = Boolean(
+              currentUser && (
+                (currentUser.id && product.sellerId && String(currentUser.id) === String(product.sellerId)) ||
+                (currentUser.organization && product.fpoName && currentUser.organization.toLowerCase() === product.fpoName.toLowerCase()) ||
+                (currentUser.name && product.fpoName && currentUser.name.toLowerCase() === product.fpoName.toLowerCase())
+              )
+            );
+
             return (
               <div
                 key={product.id}
-                className="group bg-white rounded-2xl border border-stone-200/80 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden"
+                className={`group bg-white rounded-2xl border shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col overflow-hidden ${
+                  isOwnListing ? 'border-emerald-500/60 ring-2 ring-emerald-500/15' : 'border-stone-200/80'
+                }`}
               >
                 {/* Product Image */}
                 <div 
                   className="relative h-48 w-full overflow-hidden bg-stone-100 cursor-pointer" 
                   onClick={() => onOpenProductDetail(product)}
                 >
+                  {isOwnListing && (
+                    <div className="absolute top-2.5 left-2.5 z-10 bg-emerald-950/90 border border-amber-400/60 text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 backdrop-blur-xs">
+                      <User className="w-3 h-3 text-emerald-400" />
+                      <span>Your Listing</span>
+                    </div>
+                  )}
+
                   {product.images && product.images.length > 0 && product.images[0] ? (
                     <img
                       src={product.images[0]}
@@ -168,10 +188,15 @@ export default function MarketplaceCatalog({
                           e.stopPropagation();
                           if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName);
                         }}
-                        className="font-bold text-emerald-900 truncate max-w-[180px] hover:underline flex items-center gap-1 cursor-pointer"
-                        title="View Seller Profile & Instagram Showcase"
+                        className="font-bold text-emerald-900 truncate max-w-[180px] hover:underline flex items-center gap-1.5 cursor-pointer"
+                        title={isOwnListing ? 'View Your Profile' : 'View Seller Profile & Instagram Showcase'}
                       >
                         <span>@{product.fpoName}</span>
+                        {isOwnListing && (
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.2 rounded border border-emerald-300">
+                            You
+                          </span>
+                        )}
                       </button>
                       <span className="text-emerald-700 font-medium flex items-center gap-0.5 text-[10px] shrink-0">
                         <ShieldCheck className="w-3 h-3" />
@@ -229,20 +254,36 @@ export default function MarketplaceCatalog({
 
                   {/* Primary & Secondary Actions */}
                   <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button
-                      onClick={() => onOpenProductDetail(product)}
-                      className="w-full flex items-center justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 px-2 rounded-xl text-xs transition shadow-2xs cursor-pointer"
-                    >
-                      <span>Contact / Buy</span>
-                    </button>
+                    {isOwnListing ? (
+                      <button
+                        onClick={() => {
+                          if (onEditProduct) onEditProduct(product);
+                          else onOpenProductDetail(product);
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold py-2 px-2 rounded-xl text-xs transition shadow-2xs cursor-pointer"
+                      >
+                        <span>Edit Listing</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onOpenProductDetail(product)}
+                        className="w-full flex items-center justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 px-2 rounded-xl text-xs transition shadow-2xs cursor-pointer"
+                      >
+                        <span>Contact / Buy</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => {
                         if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName);
                       }}
-                      className="w-full flex items-center justify-center gap-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold py-2 px-2 rounded-xl text-xs transition cursor-pointer"
+                      className={`w-full flex items-center justify-center gap-1 font-semibold py-2 px-2 rounded-xl text-xs transition cursor-pointer ${
+                        isOwnListing 
+                          ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold border border-emerald-200' 
+                          : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                      }`}
                     >
-                      <span>Profile</span>
+                      <span>{isOwnListing ? 'My Profile' : 'Profile'}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
                     </button>
                   </div>

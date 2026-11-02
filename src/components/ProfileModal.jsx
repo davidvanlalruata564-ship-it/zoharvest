@@ -38,6 +38,7 @@ export default function ProfileModal({
   districts = [],
   onProfileUpdated,
   initialTab = 'general',
+  onViewPublicProfile,
   t
 }) {
   if (!isOpen || !currentUser) return null;
@@ -282,31 +283,47 @@ export default function ProfileModal({
             <X className="w-5 h-5" />
           </button>
           
-          <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-amber-400 text-slate-950 font-black text-2xl flex items-center justify-center shadow-lg">
-              {currentUser.role === 'farmer' ? '👨‍🌾' : currentUser.role === 'buyer' ? '🏢' : '🛡️'}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-xl font-extrabold text-white">{currentUser.name}</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 uppercase tracking-wider">
-                  {currentUser.role}
-                </span>
-                {currentUser.isVerified ? (
-                  <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-700">
-                    <ShieldCheck className="w-3 h-3" />
-                    <span>KYC Verified</span>
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold text-amber-200 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-700">
-                    KYC Under Review
-                  </span>
-                )}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-amber-400 text-slate-950 font-black text-2xl flex items-center justify-center shadow-lg shrink-0">
+                {currentUser.role === 'farmer' ? '👨‍🌾' : currentUser.role === 'buyer' ? '🏢' : '🛡️'}
               </div>
-              <p className="text-xs text-emerald-200 mt-0.5 font-medium">
-                {currentUser.organization} • {currentUser.email}
-              </p>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-xl font-extrabold text-white">{currentUser.name}</h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 uppercase tracking-wider">
+                    {currentUser.role}
+                  </span>
+                  {currentUser.isVerified ? (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-700">
+                      <ShieldCheck className="w-3 h-3" />
+                      <span>KYC Verified</span>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-amber-200 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-700">
+                      KYC Under Review
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-emerald-200 mt-0.5 font-medium">
+                  {currentUser.organization} • {currentUser.email}
+                </p>
+              </div>
             </div>
+
+            {onViewPublicProfile && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onViewPublicProfile(currentUser.id || currentUser.organization);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-800/90 hover:bg-emerald-700 text-amber-300 border border-emerald-600/70 transition cursor-pointer shadow-xs shrink-0"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>View My Public Storefront</span>
+              </button>
+            )}
           </div>
 
           {/* Tab Navigation */}

@@ -33,6 +33,7 @@ export default function Navbar({
   authenticatedUser,
   onOpenAuthModal,
   onOpenProfile,
+  onOpenUserProfile,
   onLogout
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -163,6 +164,17 @@ export default function Navbar({
 
             {authenticatedUser ? (
               <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl border border-stone-200/80 shadow-2xs">
+                {onOpenUserProfile && (
+                  <button
+                    onClick={() => onOpenUserProfile(authenticatedUser?.id || authenticatedUser?.organization || authenticatedUser?.name)}
+                    className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 transition cursor-pointer"
+                    title="View your public profile showcase"
+                  >
+                    <Store className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>My Profile</span>
+                  </button>
+                )}
+
                 <button
                   onClick={onOpenProfile}
                   className="flex items-center gap-2 text-left hover:opacity-85 transition cursor-pointer"
@@ -293,6 +305,18 @@ export default function Navbar({
                   </div>
                   <button onClick={onLogout} className="text-xs font-bold text-red-600 hover:underline">Sign Out</button>
                 </div>
+                {onOpenUserProfile && (
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onOpenUserProfile(authenticatedUser?.id || authenticatedUser?.organization || authenticatedUser?.name);
+                    }}
+                    className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-emerald-200"
+                  >
+                    <Store className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>View My Public Profile</span>
+                  </button>
+                )}
                 <button
                   onClick={() => { setMobileMenuOpen(false); onOpenProfile(); }}
                   className="w-full bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"

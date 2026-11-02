@@ -602,6 +602,7 @@ export default function App() {
         authenticatedUser={authenticatedUser}
         onOpenAuthModal={() => setIsAuthOpen(true)}
         onOpenProfile={handleOpenProfile}
+        onOpenUserProfile={(sellerId) => setViewingSellerId(sellerId)}
         onLogout={handleLogout}
       />
 
@@ -632,6 +633,11 @@ export default function App() {
               onOpenRFQModal={(p) => setRfqProduct(p)}
               onOpenProductDetail={(p) => setSelectedProductDetail(p)}
               onOpenUserProfile={(sellerId) => setViewingSellerId(sellerId)}
+              onEditProduct={(p) => {
+                setEditingProduct(p);
+                setIsNewListingOpen(true);
+              }}
+              currentUser={currentUser}
               onDirectOrder={(p) => setRfqProduct(p)}
               t={t}
               currentLang={currentLang}
@@ -799,6 +805,12 @@ export default function App() {
           product={selectedProductDetail}
           onClose={() => setSelectedProductDetail(null)}
           onOpenUserProfile={(sellerId) => setViewingSellerId(sellerId)}
+          currentUser={currentUser}
+          onEditProduct={(p) => {
+            setSelectedProductDetail(null);
+            setEditingProduct(p);
+            setIsNewListingOpen(true);
+          }}
           t={t}
           currentLang={currentLang}
         />
@@ -812,6 +824,15 @@ export default function App() {
           products={products}
           onSelectProduct={(p) => setSelectedProductDetail(p)}
           currentUser={currentUser}
+          onOpenEditProfile={() => {
+            setViewingSellerId(null);
+            setIsProfileOpen(true);
+          }}
+          onEditProduct={(p) => {
+            setViewingSellerId(null);
+            setEditingProduct(p);
+            setIsNewListingOpen(true);
+          }}
         />
       )}
 
@@ -884,6 +905,10 @@ export default function App() {
         districts={districts}
         onProfileUpdated={handleProfileUpdated}
         initialTab={profileInitialTab}
+        onViewPublicProfile={(sellerId) => {
+          setIsProfileOpen(false);
+          setViewingSellerId(sellerId);
+        }}
         t={t}
       />
 
