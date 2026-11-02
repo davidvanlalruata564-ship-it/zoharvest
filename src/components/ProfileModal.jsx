@@ -18,6 +18,19 @@ import {
   Sparkles
 } from 'lucide-react';
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '360587275546-930r3jboqt9jed504oa438upknfosgok.apps.googleusercontent.com';
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+      <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
+  );
+}
+
 export default function ProfileModal({
   isOpen,
   onClose,
@@ -33,6 +46,7 @@ export default function ProfileModal({
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const googleLinkRef = React.useRef(null);
 
   // Synchronize initialTab when opening
   React.useEffect(() => {
@@ -112,6 +126,87 @@ export default function ProfileModal({
   };
 
   const hasExistingPassword = currentUser?.hasPassword === true || (currentUser?.authProvider !== 'google' && currentUser?.hasPassword !== false);
+  const isGoogleLinked = currentUser?.googleLinked === true || currentUser?.authProvider === 'google';
+
+  // Link Google account to existing user
+  const handleLinkGoogle = async (response) => {
+    if (!response?.credential) return;
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const res = await fetch('/api/auth/google/link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ credential: response.credential })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to link Google account.');
+      }
+
+      setSuccessMsg(data.message || 'Google account linked successfully!');
+      if (data.user) {
+        localStorage.setItem('zh_user', JSON.stringify(data.user));
+        onProfileUpdated(data.user);
+      }
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (!isOpen || activeTab !== 'security' || isGoogleLinked) return;
+
+    let mounted = true;
+    const renderGoogleLinkBtn = () => {
+      if (!mounted) return;
+      if (typeof window !== 'undefined' && window.google?.accounts?.id && googleLinkRef.current) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleLinkGoogle,
+            auto_select: false,
+            itp_support: true,
+          });
+          googleLinkRef.current.innerHTML = '';
+          window.google.accounts.id.renderButton(googleLinkRef.current, {
+            type: 'standard',
+            theme: 'outline',
+            size: 'medium',
+            text: 'continue_with',
+            shape: 'pill',
+            width: 260,
+          });
+        } catch (err) {
+          console.warn('[GIS] Error rendering link button:', err);
+        }
+      }
+    };
+
+    renderGoogleLinkBtn();
+    const timer = setTimeout(renderGoogleLinkBtn, 150);
+    const interval = setInterval(() => {
+      if (window.google?.accounts?.id) {
+        renderGoogleLinkBtn();
+        clearInterval(interval);
+      }
+    }, 250);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [isOpen, activeTab, isGoogleLinked]);
 
   // Submit password change or initial setup for Google accounts
   const handleChangePassword = async (e) => {
@@ -449,6 +544,85 @@ export default function ProfileModal({
         {/* Tab 3: Security & Password Setup / Change */}
         {activeTab === 'security' && (
           <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+            
+            {/* Connected Identities & Login Methods */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                  Connected Login Methods
+                </span>
+                <span className="text-[11px] font-bold text-emerald-800">
+                  Unified ZOHARVEST Identity
+                </span>
+              </div>
+
+              {/* Google Connection Card */}
+              {isGoogleLinked ? (
+                <div className="flex items-center justify-between p-3 bg-white border border-emerald-300 rounded-xl shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <GoogleIcon />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900">Google / Gmail Account</span>
+                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Connected</span>
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">{currentUser.email}</p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                    1-Click Sign In Active
+                  </span>
+                </div>
+              ) : (
+                <div className="p-3 bg-white border border-stone-200 rounded-xl space-y-2 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <GoogleIcon />
+                      <div>
+                        <span className="text-xs font-bold text-slate-900">Connect Google (Gmail)</span>
+                        <p className="text-[11px] text-slate-500">Enable 1-click Google sign in for this account</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-center pt-1 min-h-[40px]">
+                    <div ref={googleLinkRef}></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Password Status Card */}
+              <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold">
+                    🔑
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-900">Direct Password Login</span>
+                      {hasExistingPassword ? (
+                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Active</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">
+                          Not Set (Google Account)
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      {hasExistingPassword 
+                        ? 'You can sign in directly using your email and password.' 
+                        : 'Set a password below to enable direct email & password sign-in.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {!hasExistingPassword ? (
               <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3">
                 <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 text-lg shadow-2xs">

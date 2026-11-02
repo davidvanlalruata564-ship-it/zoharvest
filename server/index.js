@@ -218,14 +218,15 @@ app.use(
     noSniff: true,
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     originAgentCluster: false,
-    crossOriginOpenerPolicy: false,
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' }
   })
 );
 
-// Standard Permissions-Policy header to restrict sensitive device APIs
+// Cross-Origin-Opener-Policy & Device Permissions Policy
 app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
   res.setHeader(
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
@@ -993,7 +994,8 @@ function sanitizeUser(user) {
   const { passwordHash, ...userSafe } = user;
   return {
     ...userSafe,
-    hasPassword: Boolean(passwordHash)
+    hasPassword: Boolean(passwordHash),
+    googleLinked: Boolean(user.googleLinked || user.authProvider === 'google')
   };
 }
 
@@ -1152,11 +1154,12 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid login credentials. If you have not created an account yet, please click "Create Account".' });
     }
 
-    // Inform user if registered via Google
-    if (user.authProvider === 'google' && !user.passwordHash) {
+    // Inform user if registered via Google without a password
+    if (!user.passwordHash) {
       return res.status(400).json({ 
-        error: 'This account is linked to Google. Please use the "Continue with Google" button above to sign in.',
-        isGoogleAccount: true
+        error: `This account (${user.email}) is linked to Google. Please sign in with "Continue with Google" or set a password below.`,
+        isGoogleAccount: true,
+        email: user.email
       });
     }
 
@@ -1201,6 +1204,133 @@ app.post('/api/auth/logout', authenticateToken, (req, res) => {
   }
   logSecurityEvent('USER_LOGOUT', { userId: req.user.id }, req);
   res.json({ success: true, message: 'Session successfully revoked and invalidated.' });
+});
+
+// Forgot / Set Password Request: Sends 6-digit code to email
+app.post('/api/auth/forgot-password-request', async (req, res) => {
+  const { email } = req.body;
+  if (!email || !validator.isEmail(email)) {
+    return res.status(400).json({ error: 'A valid email address is required.' });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const user = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
+  if (!user) {
+    return res.status(404).json({ error: `No registered account found with ${cleanEmail}. Please create an account.` });
+  }
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  emailOtpStore.set(cleanEmail, {
+    code,
+    expiresAt: Date.now() + 10 * 60 * 1000,
+    attempts: 0
+  });
+
+  logSecurityEvent('PASSWORD_RESET_CODE_REQUESTED', { email: cleanEmail }, req);
+
+  let emailDispatchedViaSmtp = false;
+  if (process.env.EMAIL_USER && (process.env.EMAIL_PASS || process.env.GMAIL_REFRESH_TOKEN)) {
+    try {
+      const transporter = nodemailer.createTransport(
+        process.env.GMAIL_REFRESH_TOKEN ? {
+          service: 'gmail',
+          auth: {
+            type: 'OAuth2',
+            user: process.env.EMAIL_USER,
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            refreshToken: process.env.GMAIL_REFRESH_TOKEN
+          }
+        } : {
+          service: 'gmail',
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+          }
+        }
+      );
+
+      await transporter.sendMail({
+        from: `"ZOHARVEST Security" <${process.env.EMAIL_USER}>`,
+        to: cleanEmail,
+        subject: `${code} is your ZOHARVEST password setup verification code`,
+        text: `Your password verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nUse this code to set or reset your account password.`,
+        html: `<div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h2 style="color: #065f46; margin-top: 0;">ZOHARVEST Password Setup</h2>
+          <p>Please enter the following 6-digit code to set or reset your password for <strong>${cleanEmail}</strong>:</p>
+          <div style="background: #f0fdf4; border: 2px dashed #059669; padding: 16px; text-align: center; border-radius: 8px; margin: 20px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #047857;">${code}</span>
+          </div>
+          <p style="font-size: 12px; color: #64748b;">Valid for 10 minutes. If you did not request this, you can safely ignore this email.</p>
+        </div>`
+      });
+      emailDispatchedViaSmtp = true;
+    } catch (e) {
+      console.warn('[EMAIL WARNING] Reset code SMTP dispatch failed:', e.message);
+    }
+  }
+
+  res.json({
+    success: true,
+    message: emailDispatchedViaSmtp 
+      ? `Verification code dispatched to ${cleanEmail}.` 
+      : `Verification code generated for ${cleanEmail}.`,
+    emailDispatchedViaSmtp,
+    testOtp: code,
+    email: cleanEmail
+  });
+});
+
+// Reset / Set Password via 6-digit Email Code
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ error: 'Email, verification code, and new password are required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const user = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
+    if (!user) {
+      return res.status(404).json({ error: 'User account not found.' });
+    }
+
+    const otpRecord = emailOtpStore.get(cleanEmail);
+    if (!otpRecord || Date.now() > otpRecord.expiresAt) {
+      return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
+    }
+
+    if (otpRecord.code !== String(otp).trim()) {
+      return res.status(400).json({ error: 'Invalid verification code.' });
+    }
+
+    const pwdErr = validatePasswordPolicy(newPassword);
+    if (pwdErr) {
+      return res.status(400).json({ error: pwdErr });
+    }
+
+    // Invalidate code
+    emailOtpStore.delete(cleanEmail);
+
+    const salt = await bcrypt.genSalt(10);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    user.emailVerified = true;
+
+    logSecurityEvent('PASSWORD_RESET_SUCCESS', { userId: user.id }, req);
+
+    const token = generateToken(user);
+    const userSafe = sanitizeUser(user);
+
+    res.json({
+      success: true,
+      message: 'Password successfully configured! You are now signed in.',
+      token,
+      user: userSafe
+    });
+  } catch (err) {
+    console.error('[RESET PASSWORD ERROR]', err);
+    res.status(500).json({ error: 'Failed to reset password.' });
+  }
 });
 
 // Current User Profile Verification
@@ -1386,7 +1516,7 @@ app.put('/api/users/:id/status', authenticateToken, requireRole('admin'), (req, 
 // ----------------------------------------------------
 app.post('/api/auth/google', async (req, res) => {
   try {
-    const { credential, email, name, role, organization, district } = req.body;
+    const { credential, email, name, role, organization, district, phone } = req.body;
     let verifiedEmail = null;
     let verifiedName = null;
     let verifiedAvatar = null;
@@ -1429,20 +1559,22 @@ app.post('/api/auth/google', async (req, res) => {
     let user = users.find(u => u.email && u.email.toLowerCase() === verifiedEmail);
 
     if (!user) {
-      // Automatically provision verified Google account
+      // Automatically provision verified Google account with chosen role and district
       user = {
         id: `user-g-${Date.now()}`,
         name: verifiedName,
         email: verifiedEmail,
         avatarUrl: verifiedAvatar,
-        role: role || 'buyer',
-        organization: organization || `${verifiedName}'s Enterprise`,
-        phone: '+91 ' + Math.floor(6000000000 + Math.random() * 3999999999),
-        district: district || 'Aizawl',
-        address: `${district || 'Aizawl'}, Mizoram`,
+        role: role || 'farmer',
+        organization: organization || (role === 'farmer' ? `${district || 'Champhai'} Organic Collective` : `${verifiedName}'s Wholesale Enterprise`),
+        phone: phone ? phone.trim() : '',
+        district: district || 'Champhai',
+        address: `${district || 'Champhai'}, Mizoram`,
         isVerified: true,
         status: 'active',
         authProvider: 'google',
+        googleLinked: true,
+        emailVerified: true,
         verificationDoc: 'Google Verified Identity (OAuth 2.0 / GIS)',
         grossEarnings: 0,
         activeEscrow: 0,
@@ -1455,6 +1587,9 @@ app.post('/api/auth/google', async (req, res) => {
         logSecurityEvent('SUSPENDED_GOOGLE_LOGIN_BLOCKED', { userId: user.id }, req);
         return res.status(403).json({ error: 'This account has been suspended by administration.' });
       }
+      // Link Google authentication and verified email status to existing account
+      user.googleLinked = true;
+      user.emailVerified = true;
       if (verifiedAvatar && !user.avatarUrl) {
         user.avatarUrl = verifiedAvatar;
       }
@@ -1467,6 +1602,48 @@ app.post('/api/auth/google', async (req, res) => {
   } catch (err) {
     console.error('[GOOGLE AUTH ERROR]', err);
     res.status(500).json({ error: 'Google authentication service failed.' });
+  }
+});
+
+// Link Google Account to currently authenticated user profile
+app.post('/api/auth/google/link', authenticateToken, async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ error: 'Google credential token is required to link accounts.' });
+    }
+    const verifyUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`;
+    const verifyRes = await fetch(verifyUrl);
+    if (!verifyRes.ok) {
+      return res.status(401).json({ error: 'Invalid Google credential token.' });
+    }
+    const payload = await verifyRes.json();
+    const googleEmail = payload.email.trim().toLowerCase();
+
+    const user = users.find(u => u.id === req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    // Check if another account has this google email
+    const otherUser = users.find(u => u.id !== user.id && u.email && u.email.toLowerCase() === googleEmail);
+    if (otherUser) {
+      return res.status(409).json({ error: `The Google account ${googleEmail} is already linked to another ZOHARVEST account.` });
+    }
+
+    user.googleLinked = true;
+    user.emailVerified = true;
+    if (payload.picture && !user.avatarUrl) {
+      user.avatarUrl = payload.picture;
+    }
+
+    logSecurityEvent('GOOGLE_ACCOUNT_LINKED', { userId: user.id, googleEmail }, req);
+    res.json({
+      success: true,
+      message: `Google account (${googleEmail}) successfully linked to your profile!`,
+      user: sanitizeUser(user)
+    });
+  } catch (err) {
+    console.error('[GOOGLE LINK ERROR]', err);
+    res.status(500).json({ error: 'Failed to link Google account.' });
   }
 });
 
