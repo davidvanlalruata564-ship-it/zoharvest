@@ -64,11 +64,14 @@ export default function ProfileModal({
   const [bio, setBio] = useState(currentUser.bio || '');
   const [gstinOrFpoNumber, setGstinOrFpoNumber] = useState(currentUser.verificationDoc || '');
 
-  // Bank fields
+  // Direct Payment & Bank fields
   const [bankName, setBankName] = useState(currentUser.bankAccount?.bankName || 'Mizoram Rural Bank');
   const [accountNumber, setAccountNumber] = useState(currentUser.bankAccount?.accountNumber || '');
   const [ifsc, setIfsc] = useState(currentUser.bankAccount?.ifsc || 'SBIN0RRMIGB');
   const [beneficiary, setBeneficiary] = useState(currentUser.bankAccount?.beneficiary || currentUser.name || '');
+  const [upiId, setUpiId] = useState(currentUser.upiId || '');
+  const [gpayNumber, setGpayNumber] = useState(currentUser.gpayNumber || currentUser.phone || '');
+  const [whatsapp, setWhatsapp] = useState(currentUser.whatsapp || currentUser.phone || '');
 
   // Security / Password fields
   const [currentPassword, setCurrentPassword] = useState('');
@@ -94,6 +97,9 @@ export default function ProfileModal({
         body: JSON.stringify({
           name,
           phone,
+          whatsapp,
+          gpayNumber,
+          upiId,
           organization,
           district,
           address,
@@ -321,7 +327,7 @@ export default function ProfileModal({
               }`}
             >
               <CreditCard className="w-3.5 h-3.5" />
-              <span>Escrow Bank Settlements</span>
+              <span>Direct Payments (GPay & Bank)</span>
             </button>
             <button
               onClick={() => { setActiveTab('security'); setErrorMsg(''); setSuccessMsg(''); }}
@@ -465,66 +471,110 @@ export default function ProfileModal({
           </form>
         )}
 
-        {/* Tab 2: Escrow Bank Details */}
+        {/* Tab 2: Direct P2P Payment Details (GPay & Bank) */}
         {activeTab === 'bank' && (
           <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3">
               <CreditCard className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
               <div className="text-xs text-emerald-950">
-                <span className="font-bold block">Instant Automated Escrow Settlement</span>
-                When wholesale buyers inspect and approve consignments, net payout funds are wired directly via NEFT/IMPS to this designated verified bank account.
+                <span className="font-bold block">Direct Buyer-to-Seller Payment Setup</span>
+                ZOHARVEST does not handle payments or deduct platform commissions on this website. Buyers will see your Google Pay / UPI and Bank Account details on your public profile to pay you directly.
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Bank Name</label>
-                <input
-                  type="text"
-                  required
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  placeholder="e.g. Mizoram Rural Bank / State Bank of India"
-                  className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
+            {/* Google Pay / UPI Details */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+              <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                <span className="w-6 h-6 rounded-lg bg-emerald-800 text-amber-300 flex items-center justify-center text-[10px] font-black">
+                  UPI
+                </span>
+                <span>Google Pay & UPI Transfer Details</span>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Account Holder Name</label>
-                <input
-                  type="text"
-                  required
-                  value={beneficiary}
-                  onChange={(e) => setBeneficiary(e.target.value)}
-                  placeholder="Name as printed on passbook / cheque"
-                  className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    UPI ID (Google Pay, PhonePe, Paytm, BHIM)
+                  </label>
+                  <input
+                    type="text"
+                    value={upiId}
+                    onChange={(e) => setUpiId(e.target.value)}
+                    placeholder="e.g. 9436100000@okhdfcbank or farmer@upi"
+                    className="w-full py-2 px-3 text-xs font-semibold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Google Pay / WhatsApp Mobile Number
+                  </label>
+                  <input
+                    type="text"
+                    value={gpayNumber}
+                    onChange={(e) => setGpayNumber(e.target.value)}
+                    placeholder="e.g. +91 94361 00000"
+                    className="w-full py-2 px-3 text-xs font-semibold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Account Number</label>
-                <input
-                  type="text"
-                  required
-                  value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
-                  placeholder="e.g. 102938475612"
-                  className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
-                />
+            {/* Bank Account Wire Details */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+              <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                <span className="w-6 h-6 rounded-lg bg-slate-200 text-slate-800 flex items-center justify-center text-xs">
+                  🏦
+                </span>
+                <span>Direct Bank Account Details (NEFT / IMPS)</span>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Bank IFSC Code</label>
-                <input
-                  type="text"
-                  required
-                  value={ifsc}
-                  onChange={(e) => setIfsc(e.target.value.toUpperCase())}
-                  placeholder="e.g. SBIN0RRMIGB"
-                  className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono uppercase"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Bank Name</label>
+                  <input
+                    type="text"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    placeholder="e.g. Mizoram Rural Bank / State Bank of India"
+                    className="w-full py-2 px-3 text-xs font-semibold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Account Holder (Beneficiary Name)</label>
+                  <input
+                    type="text"
+                    value={beneficiary}
+                    onChange={(e) => setBeneficiary(e.target.value)}
+                    placeholder="Name as printed on passbook"
+                    className="w-full py-2 px-3 text-xs font-semibold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Account Number</label>
+                  <input
+                    type="text"
+                    value={accountNumber}
+                    onChange={(e) => setAccountNumber(e.target.value)}
+                    placeholder="e.g. 102938475612"
+                    className="w-full py-2 px-3 text-xs font-semibold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Bank IFSC Code</label>
+                  <input
+                    type="text"
+                    value={ifsc}
+                    onChange={(e) => setIfsc(e.target.value.toUpperCase())}
+                    placeholder="e.g. SBIN0RRMIGB"
+                    className="w-full py-2 px-3 text-xs font-semibold bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden font-mono uppercase"
+                  />
+                </div>
               </div>
             </div>
 
@@ -532,10 +582,10 @@ export default function ProfileModal({
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition shadow-md disabled:opacity-50"
+                className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition shadow-md disabled:opacity-50 cursor-pointer"
               >
                 <Save className="w-4 h-4" />
-                <span>{loading ? 'Saving...' : 'Update Settlement Bank Details'}</span>
+                <span>{loading ? 'Saving...' : 'Save Direct Payment Details'}</span>
               </button>
             </div>
           </form>

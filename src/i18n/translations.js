@@ -3,7 +3,7 @@ export const translations = {
     brandName: 'ZOHARVEST',
     tagline: 'Mizoram Farm-to-Business Direct Exchange',
     heroTitle: 'Direct from Mizoram’s Organic Farms & Artisans',
-    heroSubtitle: 'Source premium harvest and authentic crafts straight from local farmer cooperatives. Zero middlemen markups, transparent prices, and guaranteed escrow protection.',
+    heroSubtitle: 'Source premium harvest, groceries, and authentic crafts straight from local farmer cooperatives. Zero middlemen markups, transparent prices, and direct seller contact.',
     navMarketplace: 'Marketplace',
     navRFQ: 'Negotiate',
     navEscrow: 'Orders & Escrow',

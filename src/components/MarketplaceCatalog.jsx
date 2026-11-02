@@ -44,6 +44,7 @@ export default function MarketplaceCatalog({
   setOnlyAdvanceHarvest,
   onOpenRFQModal,
   onOpenProductDetail,
+  onOpenUserProfile,
   onDirectOrder,
   t,
   currentLang
@@ -220,9 +221,18 @@ export default function MarketplaceCatalog({
                 {/* Card Body */}
                 <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                   <div>
-                    {/* Producer Collective */}
+                    {/* Producer Collective / Instagram Handle */}
                     <div className="flex items-center justify-between text-[11px] text-stone-500 mb-1">
-                      <span className="font-semibold text-emerald-900 truncate max-w-[180px]">{product.fpoName}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName);
+                        }}
+                        className="font-bold text-emerald-900 truncate max-w-[180px] hover:underline flex items-center gap-1 cursor-pointer"
+                        title="View Seller Profile & Instagram Showcase"
+                      >
+                        <span>@{product.fpoName}</span>
+                      </button>
                       <span className="text-emerald-700 font-medium flex items-center gap-0.5 text-[10px] shrink-0">
                         <ShieldCheck className="w-3 h-3" />
                         <span>Verified</span>
@@ -280,18 +290,19 @@ export default function MarketplaceCatalog({
                   {/* Primary & Secondary Actions */}
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <button
-                      onClick={() => onOpenRFQModal(product)}
-                      className="w-full flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2 px-2 rounded-xl text-xs transition shadow-2xs cursor-pointer"
+                      onClick={() => onOpenProductDetail(product)}
+                      className="w-full flex items-center justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 px-2 rounded-xl text-xs transition shadow-2xs cursor-pointer"
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>{product.isAdvanceHarvest ? 'Pre-Order' : t.tenderRFQ}</span>
+                      <span>Contact / Buy</span>
                     </button>
 
                     <button
-                      onClick={() => onOpenProductDetail(product)}
+                      onClick={() => {
+                        if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName);
+                      }}
                       className="w-full flex items-center justify-center gap-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold py-2 px-2 rounded-xl text-xs transition cursor-pointer"
                     >
-                      <span>{t.viewDetails}</span>
+                      <span>Profile</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
                     </button>
                   </div>

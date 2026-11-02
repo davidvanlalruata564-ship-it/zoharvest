@@ -18,6 +18,7 @@ import NewListingModal from './components/NewListingModal';
 import POPrintModal from './components/POPrintModal';
 import AuthModal from './components/AuthModal';
 import ProfileModal from './components/ProfileModal';
+import PublicProfileModal from './components/PublicProfileModal';
 
 import { translations } from './i18n/translations';
 import { 
@@ -60,6 +61,7 @@ export default function App() {
   const [poModalOrder, setPoModalOrder] = useState(null);
   const [isNewListingOpen, setIsNewListingOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [viewingSellerId, setViewingSellerId] = useState(null);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -637,6 +639,7 @@ export default function App() {
               setOnlyAdvanceHarvest={setOnlyAdvanceHarvest}
               onOpenRFQModal={(p) => setRfqProduct(p)}
               onOpenProductDetail={(p) => setSelectedProductDetail(p)}
+              onOpenUserProfile={(sellerId) => setViewingSellerId(sellerId)}
               onDirectOrder={(p) => setRfqProduct(p)}
               t={t}
               currentLang={currentLang}
@@ -706,6 +709,7 @@ export default function App() {
                     setIsNewListingOpen(true);
                   }}
                   onOpenProfile={handleOpenProfile}
+                  onOpenPublicProfile={(sellerId) => setViewingSellerId(sellerId)}
                   onUpdateProduct={handleUpdateProduct}
                   onDeleteProduct={handleDeleteProduct}
                   onNavigateTab={(tab) => setActiveTab(tab)}
@@ -802,9 +806,20 @@ export default function App() {
         <ProductDetailModal
           product={selectedProductDetail}
           onClose={() => setSelectedProductDetail(null)}
-          onOpenRFQ={(p) => setRfqProduct(p)}
+          onOpenUserProfile={(sellerId) => setViewingSellerId(sellerId)}
           t={t}
           currentLang={currentLang}
+        />
+      )}
+
+      {viewingSellerId && (
+        <PublicProfileModal
+          isOpen={Boolean(viewingSellerId)}
+          onClose={() => setViewingSellerId(null)}
+          sellerId={viewingSellerId}
+          products={products}
+          onSelectProduct={(p) => setSelectedProductDetail(p)}
+          currentUser={currentUser}
         />
       )}
 

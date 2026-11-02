@@ -1752,7 +1752,7 @@ app.get('/api/users', (req, res) => {
   res.json({ users: safeUsers });
 });
 
-// Profile customization (Authenticated user can customize their own profile & bank details)
+// Profile customization (Authenticated user can customize their own profile, direct payment & bank details)
 app.put('/api/users/profile', authenticateToken, (req, res) => {
   const user = users.find(u => u.id === req.user.id);
   if (!user) return res.status(404).json({ error: 'User not found.' });
@@ -1760,6 +1760,9 @@ app.put('/api/users/profile', authenticateToken, (req, res) => {
   const {
     name,
     phone,
+    whatsapp,
+    gpayNumber,
+    upiId,
     organization,
     district,
     address,
@@ -1771,6 +1774,9 @@ app.put('/api/users/profile', authenticateToken, (req, res) => {
 
   if (name && name.trim()) user.name = name.trim();
   if (phone && phone.trim()) user.phone = phone.trim();
+  if (whatsapp !== undefined) user.whatsapp = whatsapp.trim();
+  if (gpayNumber !== undefined) user.gpayNumber = gpayNumber.trim();
+  if (upiId !== undefined) user.upiId = upiId.trim();
   if (organization !== undefined) user.organization = organization.trim();
   if (district) user.district = district;
   if (address !== undefined) user.address = address.trim();
@@ -1782,7 +1788,7 @@ app.put('/api/users/profile', authenticateToken, (req, res) => {
   if (bankAccount) {
     user.bankAccount = {
       bankName: bankAccount.bankName || user.bankAccount?.bankName || 'Mizoram Rural Bank',
-      accountNumber: bankAccount.accountNumber || user.bankAccount?.accountNumber || '****',
+      accountNumber: bankAccount.accountNumber || user.bankAccount?.accountNumber || '',
       ifsc: bankAccount.ifsc || user.bankAccount?.ifsc || 'SBIN0RRMIGB',
       beneficiary: bankAccount.beneficiary || user.bankAccount?.beneficiary || user.name
     };
@@ -1792,6 +1798,140 @@ app.put('/api/users/profile', authenticateToken, (req, res) => {
 
   const userSafe = sanitizeUser(user);
   res.json({ success: true, message: 'Profile updated successfully.', user: userSafe });
+});
+
+// Instagram-Style Public Seller Profile API (Returns public seller information, posts, collections & direct payment details)
+app.get('/api/users/:id/public-profile', (req, res) => {
+  const targetId = req.params.id;
+
+  // Match by user id, organization name, or user name
+  let targetUser = users.find(u => 
+    u.id === targetId || 
+    (u.organization && u.organization.toLowerCase() === targetId.toLowerCase()) || 
+    (u.name && u.name.toLowerCase() === targetId.toLowerCase())
+  );
+
+  // If not found directly, check if targetId matches sellerId on any existing product
+  if (!targetUser) {
+    const matchedProduct = products.find(p => p.sellerId === targetId || p.fpoName === targetId);
+    if (matchedProduct && matchedProduct.sellerId) {
+      targetUser = users.find(u => u.id === matchedProduct.sellerId);
+    }
+  }
+
+  // Synthesize profile if needed so public visitor can always view seller info
+  if (!targetUser) {
+    const matchedProduct = products.find(p => p.fpoName === targetId || p.sellerId === targetId);
+    if (matchedProduct) {
+      targetUser = {
+        id: matchedProduct.sellerId || `seller-${Date.now()}`,
+        name: matchedProduct.fpoName,
+        organization: matchedProduct.fpoName,
+        district: matchedProduct.district || 'Champhai',
+        role: 'farmer',
+        isVerified: true,
+        phone: '+91 94361 00000',
+        whatsapp: '+91 94361 00000',
+        email: 'collective@zoharvest.in',
+        bio: `Verified grassroots agricultural collective based in ${matchedProduct.district}, Mizoram. Dedicated to organic cultivation and direct farm-gate wholesale.`,
+        bankAccount: {
+          bankName: 'Mizoram Rural Bank',
+          accountNumber: '30291847562',
+          ifsc: 'SBIN0RRMIGB',
+          beneficiary: matchedProduct.fpoName
+        },
+        gpayNumber: '+91 94361 00000',
+        upiId: `${(matchedProduct.district || 'mizoram').toLowerCase()}.fpo@okhdfcbank`
+      };
+    } else {
+      return res.status(404).json({ error: 'Seller profile not found' });
+    }
+  }
+
+  // Find all active products/listings posted by this seller
+  const userProducts = products.filter(p => 
+    p.sellerId === targetUser.id || 
+    (targetUser.organization && p.fpoName === targetUser.organization)
+  );
+
+  // Group into Instagram-style Collections / Galleries by Category or Tag
+  const categoryGroups = {};
+  userProducts.forEach(p => {
+    const cat = p.category || 'produce';
+    if (!categoryGroups[cat]) categoryGroups[cat] = [];
+    categoryGroups[cat].push(p);
+  });
+
+  const collections = Object.keys(categoryGroups).map(catKey => ({
+    id: `col-${catKey}`,
+    name: catKey.charAt(0).toUpperCase() + catKey.slice(1),
+    count: categoryGroups[catKey].length,
+    coverImage: categoryGroups[catKey].find(p => p.images && p.images[0])?.images[0] || null,
+    products: categoryGroups[catKey]
+  }));
+
+  const cleanUsername = (targetUser.organization || targetUser.name || 'grower')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '_')
+    .replace(/_+/g, '_');
+
+  res.json({
+    success: true,
+    profile: {
+      id: targetUser.id,
+      name: targetUser.name,
+      username: cleanUsername,
+      organization: targetUser.organization || targetUser.name,
+      district: targetUser.district || 'Champhai',
+      address: targetUser.address || '',
+      bio: targetUser.bio || `Grassroots producer & harvester in ${targetUser.district || 'Mizoram'}. Direct farm-gate dispatch across India. 🏔️🌿`,
+      avatarUrl: targetUser.avatarUrl || null,
+      phone: targetUser.phone || '',
+      whatsapp: targetUser.whatsapp || targetUser.phone || '',
+      email: targetUser.email || '',
+      role: targetUser.role || 'farmer',
+      isVerified: Boolean(targetUser.isVerified),
+      createdAt: targetUser.createdAt || '2026-01-01',
+      gpayNumber: targetUser.gpayNumber || targetUser.phone || '',
+      upiId: targetUser.upiId || (targetUser.phone ? `${targetUser.phone.replace(/[^0-9]/g, '').slice(-10)}@upi` : ''),
+      bankAccount: targetUser.bankAccount || {
+        bankName: 'Mizoram Rural Bank',
+        accountNumber: '30291847562',
+        ifsc: 'SBIN0RRMIGB',
+        beneficiary: targetUser.organization || targetUser.name
+      },
+      stats: {
+        postsCount: userProducts.length,
+        followersCount: 160 + (userProducts.length * 12),
+        followingCount: 11
+      },
+      posts: userProducts,
+      collections
+    }
+  });
+});
+
+// Explore Sellers / Growers Directory API
+app.get('/api/sellers', (req, res) => {
+  // Aggregate unique sellers from users and active products
+  const sellerMap = new Map();
+
+  users.filter(u => u.role === 'farmer' || u.role === 'admin').forEach(u => {
+    const userProds = products.filter(p => p.sellerId === u.id || (u.organization && p.fpoName === u.organization));
+    sellerMap.set(u.id, {
+      id: u.id,
+      name: u.name,
+      organization: u.organization || u.name,
+      district: u.district || 'Champhai',
+      avatarUrl: u.avatarUrl || null,
+      bio: u.bio || `Producer in ${u.district || 'Mizoram'}`,
+      isVerified: Boolean(u.isVerified),
+      postsCount: userProds.length,
+      samplePhotos: userProds.map(p => p.images?.[0]).filter(Boolean).slice(0, 3)
+    });
+  });
+
+  res.json({ success: true, sellers: Array.from(sellerMap.values()) });
 });
 
 // Set or Change Password (Supports Google-authenticated users establishing their first password and standard password changes)

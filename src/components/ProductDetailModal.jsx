@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   X, 
   MapPin, 
@@ -10,11 +10,23 @@ import {
   CheckCircle2, 
   TrendingDown,
   Building,
-  Check
+  Check,
+  MessageCircle,
+  Phone,
+  CreditCard,
+  ExternalLink
 } from 'lucide-react';
 
-export default function ProductDetailModal({ product, onClose, onOpenRFQ, t, currentLang }) {
+export default function ProductDetailModal({ 
+  product, 
+  onClose, 
+  onOpenUserProfile, 
+  t, 
+  currentLang 
+}) {
   if (!product) return null;
+
+  const [showDirectPayHint, setShowDirectPayHint] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -60,9 +72,17 @@ export default function ProductDetailModal({ product, onClose, onOpenRFQ, t, cur
                   </span>
                 )}
               </div>
-              <h4 className="text-sm font-bold text-emerald-300 flex items-center gap-1.5">
+              <h4 
+                onClick={() => {
+                  onClose();
+                  if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName);
+                }}
+                className="text-sm font-bold text-emerald-300 flex items-center gap-1.5 cursor-pointer hover:underline w-fit"
+                title="View Seller Profile"
+              >
                 <Building className="w-4 h-4" />
                 <span>{product.fpoName}</span>
+                <span className="text-[10px] text-amber-300 font-normal">(@View Profile)</span>
               </h4>
               <p className="text-xs text-slate-300 flex items-center gap-1 mt-0.5">
                 <MapPin className="w-3.5 h-3.5 text-amber-400" />
@@ -159,15 +179,46 @@ export default function ProductDetailModal({ product, onClose, onOpenRFQ, t, cur
               </div>
             </div>
 
-            {/* Bottom Actions */}
-            <div className="pt-4 border-t border-slate-100 flex items-center gap-3">
+            {/* Direct Contact & P2P Settlement Actions */}
+            <div className="pt-4 border-t border-slate-100 space-y-2.5">
+              
               <button
-                onClick={() => { onClose(); onOpenRFQ(product); }}
-                className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2"
+                onClick={() => {
+                  onClose();
+                  if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName);
+                }}
+                className="w-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-950 font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
               >
-                <Sparkles className="w-4 h-4" />
-                <span>{product.isAdvanceHarvest ? 'Pre-Order Advance Harvest' : t.tenderRFQ}</span>
+                <span>👤 View Seller Profile & Instagram Showcase</span>
+                <span className="text-emerald-700 font-normal">➜</span>
               </button>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={`https://wa.me/919436100000?text=${encodeURIComponent(`Hello ${product.fpoName}, I found your listing "${product.name}" on ZOHARVEST. Is it available for dispatch?`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Chat on WhatsApp</span>
+                </a>
+
+                <button
+                  onClick={() => {
+                    onClose();
+                    if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName, 'payment');
+                  }}
+                  className="bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold py-2.5 px-4 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>GPay / Bank Info</span>
+                </button>
+              </div>
+
+              <div className="text-[11px] text-slate-400 text-center font-medium">
+                Direct wholesale settlement • 0% platform intermediary commission
+              </div>
             </div>
 
           </div>

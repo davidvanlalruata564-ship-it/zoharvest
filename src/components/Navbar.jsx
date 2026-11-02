@@ -100,42 +100,6 @@ export default function Navbar({
                 if (!authenticatedUser) {
                   onOpenAuthModal();
                 } else {
-                  setActiveTab('rfqs');
-                }
-              }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                activeTab === 'rfqs'
-                  ? 'bg-emerald-800 text-white shadow-xs'
-                  : 'text-stone-600 hover:text-emerald-900 hover:bg-white/70'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>{t.navRFQ}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (!authenticatedUser) {
-                  onOpenAuthModal();
-                } else {
-                  setActiveTab('orders');
-                }
-              }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                activeTab === 'orders'
-                  ? 'bg-emerald-800 text-white shadow-xs'
-                  : 'text-stone-600 hover:text-emerald-900 hover:bg-white/70'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>{t.navEscrow}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (!authenticatedUser) {
-                  onOpenAuthModal();
-                } else {
                   setActiveTab('dashboard');
                 }
               }}
@@ -275,26 +239,6 @@ export default function Navbar({
           >
             <Store className="w-4 h-4" />
             <span>{t.navMarketplace}</span>
-          </button>
-          <button
-            onClick={() => { 
-              setMobileMenuOpen(false);
-              if (!authenticatedUser) { onOpenAuthModal(); } else { setActiveTab('rfqs'); }
-            }}
-            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 ${activeTab === 'rfqs' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'}`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>{t.navRFQ}</span>
-          </button>
-          <button
-            onClick={() => { 
-              setMobileMenuOpen(false);
-              if (!authenticatedUser) { onOpenAuthModal(); } else { setActiveTab('orders'); }
-            }}
-            className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 ${activeTab === 'orders' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'}`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>{t.navEscrow}</span>
           </button>
           <button
             onClick={() => { 

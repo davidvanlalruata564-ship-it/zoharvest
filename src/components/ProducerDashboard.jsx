@@ -31,6 +31,7 @@ export default function ProducerDashboard({
   onOpenNewListing,
   onEditProduct,
   onOpenProfile,
+  onOpenPublicProfile,
   onUpdateProduct,
   onDeleteProduct,
   onNavigateTab,
@@ -119,18 +120,26 @@ export default function ProducerDashboard({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => onOpenPublicProfile && onOpenPublicProfile(currentUser?.id || currentUser?.organization)}
+            className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold px-4 py-3 rounded-xl text-xs sm:text-sm transition border border-emerald-300 cursor-pointer shadow-2xs"
+            title="Preview how buyers view your Instagram-style showcase"
+          >
+            <span>📸 View My Public Profile</span>
+          </button>
+
           <button
             onClick={onOpenProfile}
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-4 py-3 rounded-xl text-xs sm:text-sm transition border border-slate-200"
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-4 py-3 rounded-xl text-xs sm:text-sm transition border border-slate-200 cursor-pointer"
           >
             <Settings className="w-4 h-4 text-slate-600" />
-            <span>Customize Profile & Payouts</span>
+            <span>Edit GPay & Bank Info</span>
           </button>
 
           <button
             onClick={onOpenNewListing}
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-5 py-3 rounded-xl text-xs sm:text-sm transition shadow-md"
+            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-5 py-3 rounded-xl text-xs sm:text-sm transition shadow-md cursor-pointer"
           >
             <PlusCircle className="w-4 h-4" />
             <span>{t.newListing}</span>
