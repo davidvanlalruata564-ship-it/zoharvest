@@ -898,9 +898,14 @@ let gmailTokenExpiresAt = 0;
 async function getGmailApiAccessToken() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN || process.env.GMAIL_REFRESH_TOKEN;
 
   if (!clientId || !clientSecret || !refreshToken) {
+    console.warn('[GMAIL API CONFIG NOTICE] Missing credentials:', {
+      hasClientId: Boolean(clientId),
+      hasClientSecret: Boolean(clientSecret),
+      hasRefreshToken: Boolean(refreshToken)
+    });
     return null;
   }
 
@@ -913,17 +918,17 @@ async function getGmailApiAccessToken() {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
+        client_id: clientId.trim(),
+        client_secret: clientSecret.trim(),
+        refresh_token: refreshToken.trim(),
         grant_type: 'refresh_token'
       }),
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(6000)
     });
 
     if (!tokenRes.ok) {
       const errText = await tokenRes.text();
-      console.error('[GMAIL API TOKEN ERROR]', tokenRes.status, errText);
+      console.error('[GMAIL API TOKEN ERROR] Google rejected refresh token:', tokenRes.status, errText);
       return null;
     }
 
@@ -940,13 +945,15 @@ async function getGmailApiAccessToken() {
 async function sendViaGmailApi({ to, subject, html, text }) {
   const accessToken = await getGmailApiAccessToken();
   if (!accessToken) {
-    throw new Error('Gmail API credentials not ready (requires GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GMAIL_REFRESH_TOKEN)');
+    throw new Error('Gmail API OAuth token exchange failed. Check GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN in Render.');
   }
 
-  const senderEmail = process.env.EMAIL_USER || 'me';
+  const senderEmail = (process.env.GMAIL_USER || process.env.EMAIL_USER || '').trim();
   const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+  const fromHeader = senderEmail ? `"ZOHARVEST Security" <${senderEmail}>` : '"ZOHARVEST Security"';
+
   const messageParts = [
-    `From: "ZOHARVEST Security" <${senderEmail}>`,
+    `From: ${fromHeader}`,
     `To: ${to}`,
     `Subject: ${utf8Subject}`,
     'MIME-Version: 1.0',
@@ -965,16 +972,17 @@ async function sendViaGmailApi({ to, subject, html, text }) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ raw: rawMessage }),
-    signal: AbortSignal.timeout(6000)
+    signal: AbortSignal.timeout(8000)
   });
 
   if (!sendRes.ok) {
     const errText = await sendRes.text();
+    console.error('[GMAIL API SEND ERROR]', sendRes.status, errText);
     throw new Error(`Gmail API messages.send failed (${sendRes.status}): ${errText}`);
   }
 
   const result = await sendRes.json();
-  console.log(`[GMAIL API SUCCESS] Email dispatched via HTTPS to ${to} (Message ID: ${result.id})`);
+  console.log(`[GMAIL API SUCCESS] Email successfully dispatched via HTTPS to ${to} (Message ID: ${result.id})`);
   return result;
 }
 
@@ -983,8 +991,10 @@ async function sendVerificationEmail({ to, subject, html, text }) {
   const errors = [];
   let attempted = false;
 
+  const hasGoogleRefreshToken = Boolean(process.env.GOOGLE_REFRESH_TOKEN || process.env.GMAIL_REFRESH_TOKEN);
+
   // 1. Gmail REST API over HTTPS (Port 443 - never blocked by Render)
-  if (process.env.GMAIL_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_SECRET) {
+  if (hasGoogleRefreshToken && process.env.GOOGLE_CLIENT_SECRET) {
     attempted = true;
     try {
       await sendViaGmailApi({ to, subject, html, text });
@@ -1152,9 +1162,10 @@ app.post('/api/auth/email-otp-request', async (req, res) => {
         noEmailProvider: true
       });
     } else {
+      const errorDetail = dispatchResult.errors && dispatchResult.errors.length > 0 ? dispatchResult.errors[0] : 'Check Google OAuth credentials';
       return res.status(502).json({
-        error: 'Unable to deliver verification email to your address. Please ensure your email is valid or use 1-click "Sign Up with Google".',
-        details: isProduction ? undefined : dispatchResult.errors
+        error: `Email delivery failed: ${errorDetail}. Please check your GOOGLE_REFRESH_TOKEN or use 1-click "Sign Up with Google".`,
+        details: dispatchResult.errors
       });
     }
   }
