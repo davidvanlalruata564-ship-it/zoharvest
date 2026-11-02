@@ -802,34 +802,33 @@ export default function AdminVerificationHub({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { name: 'Champhai', crop: "Bird's Eye Chilli, Grapes, Rice", fpos: 6, gmv: '₹18,40,000' },
-              { name: 'Kolasib', crop: 'High-Oleoresin Ginger, Areca Nut, Turmeric', fpos: 5, gmv: '₹14,20,000' },
-              { name: 'Serchhip', crop: 'Lakadong High-Curcumin Turmeric, Cabbage', fpos: 4, gmv: '₹9,80,000' },
-              { name: 'Aizawl', crop: 'Handicrafts, Bamboo Artifacts, Anthurium Flowers', fpos: 7, gmv: '₹12,10,000' },
-              { name: 'Lunglei', crop: 'Organic Black Pepper, Cinnamon, Coffee', fpos: 3, gmv: '₹7,50,000' },
-              { name: 'Mamit', crop: 'Hatkora Wild Citrus, Bamboo Shoots, Rubber', fpos: 4, gmv: '₹6,90,000' },
-              { name: 'Lawngtlai', crop: 'Cardamom, Forest Wild Honey, Silk Weaves', fpos: 2, gmv: '₹4,10,000' },
-              { name: 'Siaha', crop: 'Sesame, Traditional Cotton Yarn Fabrics', fpos: 2, gmv: '₹3,60,000' },
-              { name: 'Saitual', crop: 'Organic Tea, Ginger, Mustard Greens', fpos: 3, gmv: '₹4,80,000' },
-              { name: 'Khawzawl', crop: 'Highland Garlic, Mizo Red Maize', fpos: 2, gmv: '₹3,20,000' },
-              { name: 'Hnahthial', crop: 'Citrus (Mandarin Orange), Bamboo Mats', fpos: 2, gmv: '₹2,90,000' }
-            ].map((d, i) => (
-              <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5 hover:bg-emerald-50/50 transition">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>{d.name}</span>
-                  </span>
-                  <span className="font-mono font-bold text-xs text-emerald-900">{d.gmv}</span>
+              'Aizawl', 'Champhai', 'Kolasib', 'Lunglei', 'Serchhip', 
+              'Mamit', 'Lawngtlai', 'Siaha', 'Saitual', 'Khawzawl', 'Hnahthial'
+            ].map((dName, i) => {
+              const dProducts = products.filter(p => p.district?.toLowerCase() === dName.toLowerCase());
+              const dUsers = users.filter(u => u.district?.toLowerCase() === dName.toLowerCase());
+              return (
+                <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5 hover:bg-emerald-50/50 transition">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-slate-900 text-sm flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>{dName}</span>
+                    </span>
+                    <span className="font-mono font-bold text-xs text-emerald-900">
+                      {dProducts.length} {dProducts.length === 1 ? 'Listing' : 'Listings'}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 font-medium">
+                    {dProducts.length > 0 
+                      ? dProducts.map(p => p.name).slice(0, 2).join(', ') + (dProducts.length > 2 ? '...' : '')
+                      : 'No active listings currently'}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-semibold pt-1 border-t border-slate-200">
+                    {dUsers.length} Registered {dUsers.length === 1 ? 'Account' : 'Accounts'}
+                  </div>
                 </div>
-                <div className="text-[11px] text-slate-600 font-medium">
-                  {d.crop}
-                </div>
-                <div className="text-[10px] text-slate-400 font-semibold pt-1 border-t border-slate-200">
-                  {d.fpos} Verified Producer Cooperatives
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

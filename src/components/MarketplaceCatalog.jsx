@@ -37,6 +37,8 @@ export default function MarketplaceCatalog({
   onOpenProductDetail,
   onOpenUserProfile,
   onEditProduct,
+  onOpenNewListing,
+  onOpenAuth,
   currentUser,
   t,
   currentLang
@@ -107,14 +109,47 @@ export default function MarketplaceCatalog({
 
       {/* Catalog Grid */}
       {products.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-stone-200/80 shadow-2xs space-y-3">
-          <div className="w-14 h-14 rounded-full bg-stone-100 text-stone-400 mx-auto flex items-center justify-center">
-            <Package className="w-7 h-7" />
+        <div className="bg-white rounded-3xl p-12 text-center border border-stone-200/80 shadow-2xs space-y-3.5 max-w-md mx-auto my-8">
+          <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-800 mx-auto flex items-center justify-center border border-emerald-200 text-2xl font-bold shadow-2xs">
+            🌾
           </div>
-          <h3 className="text-base font-bold text-stone-800">No commodities match your current filters</h3>
-          <p className="text-xs text-stone-500 max-w-sm mx-auto">
-            Try resetting your district or grade filters to see all available agricultural and craft products.
+          <h3 className="text-lg font-extrabold text-stone-900">
+            {selectedCategory !== 'all' || selectedDistrict !== 'all' || selectedGrade !== 'all'
+              ? 'No listings match current filters'
+              : 'No produce listings yet'}
+          </h3>
+          <p className="text-xs text-stone-500 max-w-sm mx-auto leading-relaxed">
+            {selectedCategory !== 'all' || selectedDistrict !== 'all' || selectedGrade !== 'all'
+              ? 'Try resetting your district or category filters to view all listings.'
+              : 'Be the first grower or pantry producer to post fresh harvest produce on ZOHARVEST.'}
           </p>
+          <div className="pt-2">
+            {selectedCategory !== 'all' || selectedDistrict !== 'all' || selectedGrade !== 'all' ? (
+              <button
+                onClick={() => {
+                  setSelectedCategory('all');
+                  setSelectedDistrict('all');
+                  setSelectedGrade('all');
+                }}
+                className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                Reset Filters
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (!currentUser && onOpenAuth) {
+                    onOpenAuth();
+                  } else if (onOpenNewListing) {
+                    onOpenNewListing();
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl transition shadow-sm cursor-pointer"
+              >
+                <span>+ Post First Produce Listing</span>
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">

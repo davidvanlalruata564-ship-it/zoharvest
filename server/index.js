@@ -1904,7 +1904,7 @@ app.put('/api/users/profile', authenticateToken, (req, res) => {
     user.bankAccount = {
       bankName: bankAccount.bankName || user.bankAccount?.bankName || 'Mizoram Rural Bank',
       accountNumber: bankAccount.accountNumber || user.bankAccount?.accountNumber || '',
-      ifsc: bankAccount.ifsc || user.bankAccount?.ifsc || 'SBIN0RRMIGB',
+      ifsc: bankAccount.ifsc || user.bankAccount?.ifsc || '',
       beneficiary: bankAccount.beneficiary || user.bankAccount?.beneficiary || user.name
     };
   }
@@ -1943,21 +1943,16 @@ app.get('/api/users/:id/public-profile', (req, res) => {
         id: matchedProduct.sellerId || `seller-${Date.now()}`,
         name: matchedProduct.fpoName,
         organization: matchedProduct.fpoName,
-        district: matchedProduct.district || 'Champhai',
+        district: matchedProduct.district || 'Mizoram',
         role: 'farmer',
         isVerified: true,
-        phone: '+91 94361 00000',
-        whatsapp: '+91 94361 00000',
-        email: 'collective@zoharvest.in',
-        bio: `Verified grassroots agricultural collective based in ${matchedProduct.district}, Mizoram. Dedicated to organic cultivation and direct farm-gate wholesale.`,
-        bankAccount: {
-          bankName: 'Mizoram Rural Bank',
-          accountNumber: '30291847562',
-          ifsc: 'SBIN0RRMIGB',
-          beneficiary: matchedProduct.fpoName
-        },
-        gpayNumber: '+91 94361 00000',
-        upiId: `${(matchedProduct.district || 'mizoram').toLowerCase()}.fpo@okhdfcbank`
+        phone: matchedProduct.phone || '',
+        whatsapp: matchedProduct.whatsapp || matchedProduct.phone || '',
+        email: matchedProduct.email || '',
+        bio: `Local grower and producer based in ${matchedProduct.district || 'Mizoram'}.`,
+        bankAccount: null,
+        gpayNumber: matchedProduct.gpayNumber || '',
+        upiId: matchedProduct.upiId || ''
       };
     } else {
       return res.status(404).json({ error: 'Seller profile not found' });
@@ -2008,14 +2003,9 @@ app.get('/api/users/:id/public-profile', (req, res) => {
       role: targetUser.role || 'farmer',
       isVerified: Boolean(targetUser.isVerified),
       createdAt: targetUser.createdAt || '2026-01-01',
-      gpayNumber: targetUser.gpayNumber || targetUser.phone || '',
-      upiId: targetUser.upiId || (targetUser.phone ? `${targetUser.phone.replace(/[^0-9]/g, '').slice(-10)}@upi` : ''),
-      bankAccount: targetUser.bankAccount || {
-        bankName: 'Mizoram Rural Bank',
-        accountNumber: '30291847562',
-        ifsc: 'SBIN0RRMIGB',
-        beneficiary: targetUser.organization || targetUser.name
-      },
+      gpayNumber: targetUser.gpayNumber || '',
+      upiId: targetUser.upiId || '',
+      bankAccount: targetUser.bankAccount || null,
       socialLinks: {
         instagram: targetUser.instagram || '',
         website: targetUser.website || '',

@@ -435,6 +435,11 @@ export default function App() {
                 setEditingProduct(p);
                 setIsNewListingOpen(true);
               }}
+              onOpenNewListing={() => {
+                setEditingProduct(null);
+                setIsNewListingOpen(true);
+              }}
+              onOpenAuth={() => setIsAuthOpen(true)}
               currentUser={currentUser}
               t={t}
               currentLang={currentLang}

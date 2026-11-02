@@ -882,38 +882,48 @@ export default function ProfilePage({
                 </div>
               </div>
 
-              <div className="space-y-2 text-xs">
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                  <span className="text-[10px] text-slate-400 block font-medium">Bank Name</span>
-                  <span className="font-bold text-slate-900">{profile?.bankAccount?.bankName || 'Mizoram Rural Bank'}</span>
-                </div>
+              {profile?.bankAccount?.accountNumber ? (
+                <div className="space-y-2 text-xs">
+                  {profile?.bankAccount?.bankName && (
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                      <span className="text-[10px] text-slate-400 block font-medium">Bank Name</span>
+                      <span className="font-bold text-slate-900">{profile.bankAccount.bankName}</span>
+                    </div>
+                  )}
 
-                <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-200">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-medium">Account Number</span>
-                    <span className="font-mono font-bold text-slate-900">{profile?.bankAccount?.accountNumber || '30291847562'}</span>
+                  <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-200">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Account Number</span>
+                      <span className="font-mono font-bold text-slate-900">{profile.bankAccount.accountNumber}</span>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(profile.bankAccount.accountNumber, 'acc')}
+                      className="p-1 rounded-md text-slate-400 hover:text-emerald-700 transition cursor-pointer"
+                    >
+                      {copiedKey === 'acc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => copyToClipboard(profile?.bankAccount?.accountNumber, 'acc')}
-                    className="p-1 rounded-md text-slate-400 hover:text-emerald-700 transition"
-                  >
-                    {copiedKey === 'acc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
 
-                <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-200">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-medium">IFSC Code</span>
-                    <span className="font-mono font-bold text-emerald-800">{profile?.bankAccount?.ifsc || 'SBIN0RRMIGB'}</span>
-                  </div>
-                  <button
-                    onClick={() => copyToClipboard(profile?.bankAccount?.ifsc, 'ifsc')}
-                    className="p-1 rounded-md text-slate-400 hover:text-emerald-700 transition"
-                  >
-                    {copiedKey === 'ifsc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
+                  {profile?.bankAccount?.ifsc && (
+                    <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-200">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-medium">IFSC Code</span>
+                        <span className="font-mono font-bold text-emerald-800">{profile.bankAccount.ifsc}</span>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(profile.bankAccount.ifsc, 'ifsc')}
+                        className="p-1 rounded-md text-slate-400 hover:text-emerald-700 transition cursor-pointer"
+                      >
+                        {copiedKey === 'ifsc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
+              ) : (
+                <div className="bg-white p-4 rounded-xl border border-slate-200 text-center text-xs text-slate-500">
+                  No bank account details configured yet.
+                </div>
+              )}
             </div>
 
           </div>

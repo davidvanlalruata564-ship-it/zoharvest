@@ -248,15 +248,28 @@ export default function ProductDetailModal({
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <a
-                    href={`https://wa.me/919436100000?text=${encodeURIComponent(`Hello ${product.fpoName}, I found your listing "${product.name}" on ZOHARVEST. Is it available for dispatch?`)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Chat on WhatsApp</span>
-                  </a>
+                  {(product.whatsapp || product.phone) ? (
+                    <a
+                      href={`https://wa.me/${(product.whatsapp || product.phone).replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${product.fpoName}, I found your listing "${product.name}" on ZOHARVEST. Is it available for dispatch?`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>Chat on WhatsApp</span>
+                    </a>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        onClose();
+                        if (onOpenUserProfile) onOpenUserProfile(product.sellerId || product.fpoName);
+                      }}
+                      className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>View Contacts</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => {

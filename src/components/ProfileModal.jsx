@@ -79,9 +79,9 @@ export default function ProfileModal({
   const [twitter, setTwitter] = useState(currentUser.twitter || '');
 
   // Direct Payment & Bank fields
-  const [bankName, setBankName] = useState(currentUser.bankAccount?.bankName || 'Mizoram Rural Bank');
+  const [bankName, setBankName] = useState(currentUser.bankAccount?.bankName || '');
   const [accountNumber, setAccountNumber] = useState(currentUser.bankAccount?.accountNumber || '');
-  const [ifsc, setIfsc] = useState(currentUser.bankAccount?.ifsc || 'SBIN0RRMIGB');
+  const [ifsc, setIfsc] = useState(currentUser.bankAccount?.ifsc || '');
   const [beneficiary, setBeneficiary] = useState(currentUser.bankAccount?.beneficiary || currentUser.name || '');
   const [upiId, setUpiId] = useState(currentUser.upiId || '');
   const [gpayNumber, setGpayNumber] = useState(currentUser.gpayNumber || currentUser.phone || '');
