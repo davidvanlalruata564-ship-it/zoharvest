@@ -64,12 +64,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
   const [otpPhone, setOtpPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [testOtpNotice, setTestOtpNotice] = useState('');
 
   // Email / Gmail OTP verification states
   const [emailOtp, setEmailOtp] = useState('');
   const [emailOtpSent, setEmailOtpSent] = useState(false);
-  const [emailOtpNotice, setEmailOtpNotice] = useState('');
   const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
 
   // Forgot / Set Password states
@@ -78,7 +76,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
-  const [forgotOtpNotice, setForgotOtpNotice] = useState('');
 
   // Dynamic Password Policy Checks (NIST SP 800-63B standards)
   const hasMinLength = password.length >= 8;
@@ -274,20 +271,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
         throw new Error(data.error || 'Failed to dispatch email verification code.');
       }
 
+      setEmailOtp(''); // Clear input: user must enter code received in email!
       setEmailOtpSent(true);
       setRegisterStep('otp'); // Immediately transition to dedicated OTP page
-
-      if (data.testOtp) {
-        setEmailOtpNotice(data.testOtp);
-        setEmailOtp(data.testOtp);
-        setSuccessMessage(
-          data.emailDispatchedViaSmtp
-            ? `Verification code dispatched to ${email}! Enter the 6-digit code below to finish.`
-            : `Verification code generated for ${email}! Code auto-filled below. Click "Verify Email & Complete Registration".`
-        );
-      } else {
-        setSuccessMessage(`Verification code sent to ${email}! Please check your email inbox.`);
-      }
+      setSuccessMessage(data.message || `Verification code sent to ${email}! Please check your email inbox.`);
     } catch (err) {
       setErrorMessage(err.message);
     } finally {
@@ -327,14 +314,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
 
       const data = await res.json();
       if (!res.ok) {
-        if (data.requiresOtp && data.testOtp) {
-          setEmailOtpSent(true);
-          setRegisterStep('otp');
-          setEmailOtpNotice(data.testOtp);
-          setEmailOtp(data.testOtp);
-          setSuccessMessage(`Verification code ${data.testOtp} auto-filled! Click "Verify & Complete Registration" to finish.`);
-          return;
-        }
         throw new Error(data.error || 'Registration failed.');
       }
 
@@ -374,9 +353,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
       }
 
       setOtpSent(true);
-      if (data.testOtp) {
-        setTestOtpNotice(data.testOtp);
-      }
       setSuccessMessage(`6-digit code dispatched to ${otpPhone}`);
     } catch (err) {
       setErrorMessage(err.message);
@@ -447,14 +423,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
         throw new Error(data.error || 'Failed to send password setup code.');
       }
       setForgotEmail(targetEmail);
+      setForgotOtp(''); // Clear input: user must enter code received in email!
       setForgotStep('verify');
-      if (data.testOtp) {
-        setForgotOtpNotice(data.testOtp);
-        setForgotOtp(data.testOtp);
-        setSuccessMessage(`Verification code ${data.testOtp} auto-filled! Choose your new password.`);
-      } else {
-        setSuccessMessage(`Verification code sent to ${targetEmail}. Please check your inbox.`);
-      }
+      setSuccessMessage(data.message || `Verification code sent to ${targetEmail}. Please check your inbox.`);
     } catch (err) {
       setErrorMessage(err.message);
     } finally {
@@ -956,33 +927,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
               <div className="w-14 h-14 bg-emerald-100 text-emerald-800 rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-xs">
                 ✉️
               </div>
-              <h3 className="text-lg font-extrabold text-slate-900">Verify Your Email Address</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Enter the 6-digit verification code sent to <strong className="text-slate-900 font-bold">{email}</strong>.
+              <h3 className="text-lg font-extrabold text-slate-900">Check Your Inbox</h3>
+              <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
+                We've dispatched a 6-digit verification code to <strong className="text-slate-900 font-bold">{email}</strong>. Enter the code below to complete your registration.
+              </p>
+              <p className="text-[11px] text-slate-400">
+                (Please check your spam or promotions folder if you don't see it within a minute)
               </p>
             </div>
-
-            {/* Verification code notice & auto-fill */}
-            {emailOtpNotice && (
-              <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xl">🔑</span>
-                  <div>
-                    <span className="font-extrabold text-emerald-950 block text-xs">
-                      Verification Code: <span className="font-mono text-base tracking-widest text-emerald-900 font-extrabold">{emailOtpNotice}</span>
-                    </span>
-                    <span className="text-[10px] text-emerald-700">Code issued for this account. Auto-filled below.</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEmailOtp(emailOtpNotice)}
-                  className="bg-emerald-800 hover:bg-emerald-900 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs shrink-0"
-                >
-                  Auto-Fill Code
-                </button>
-              </div>
-            )}
 
             <form onSubmit={handleVerifyEmailAndRegister} className="space-y-4">
               <div>
@@ -1029,6 +981,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                 </button>
               </div>
             </form>
+
+            <div className="pt-3 border-t border-slate-100 text-center">
+              <p className="text-xs text-slate-500 mb-1.5">Didn't receive an email code?</p>
+              <button
+                type="button"
+                onClick={() => setRegisterStep('form')}
+                className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer"
+              >
+                ← Back to Instant 1-Click Google Sign-Up (Zero OTP Needed)
+              </button>
+            </div>
           </div>
         )}
 
@@ -1087,23 +1050,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
               </form>
             ) : (
               <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5">
-                {forgotOtpNotice && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-2 text-xs">
-                    <span className="font-bold text-emerald-950">
-                      Code: <span className="font-mono text-sm tracking-widest text-emerald-900">{forgotOtpNotice}</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setForgotOtp(forgotOtpNotice)}
-                      className="bg-emerald-800 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer"
-                    >
-                      Auto-Fill
-                    </button>
-                  </div>
-                )}
-
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">6-Digit Verification Code</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">6-Digit Verification Code (Sent to your email)</label>
                   <input
                     type="text"
                     required

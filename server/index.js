@@ -978,48 +978,117 @@ async function sendViaGmailApi({ to, subject, html, text }) {
   return result;
 }
 
-// Non-blocking asynchronous email dispatcher
-// Priority 1: Gmail REST API over HTTPS (Port 443 - bypasses all Render/cloud SMTP blocks)
-// Priority 2: Nodemailer SMTP with strict 2.5-second timeout fallback (local testing)
-function dispatchEmailAsync({ to, subject, text, html }) {
-  setImmediate(async () => {
-    // 1. Try Gmail REST API over HTTPS (Port 443 - never blocked by Render)
-    if (process.env.GMAIL_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_SECRET) {
-      try {
-        await sendViaGmailApi({ to, subject, html, text });
-        return;
-      } catch (err) {
-        console.warn('[GMAIL API NOTICE]', err.message);
-      }
+// Unified multi-provider email dispatcher (Gmail API, Resend API, Brevo API, SMTP)
+async function sendVerificationEmail({ to, subject, html, text }) {
+  const errors = [];
+  let attempted = false;
+
+  // 1. Gmail REST API over HTTPS (Port 443 - never blocked by Render)
+  if (process.env.GMAIL_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_SECRET) {
+    attempted = true;
+    try {
+      await sendViaGmailApi({ to, subject, html, text });
+      return { success: true, provider: 'gmail_api' };
+    } catch (err) {
+      console.warn('[GMAIL API ERROR]', err.message);
+      errors.push(`Gmail API: ${err.message}`);
     }
+  }
 
-    // 2. Fallback to Nodemailer SMTP with strict 2.5s timeout (non-blocking)
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      try {
-        const transporter = nodemailer.createTransport({
-          service: 'gmail',
-          connectionTimeout: 2500,
-          greetingTimeout: 2500,
-          socketTimeout: 2500,
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-          }
-        });
-
-        await transporter.sendMail({
-          from: `"ZOHARVEST Security" <${process.env.EMAIL_USER}>`,
-          to,
+  // 2. Resend API over HTTPS (Port 443 - cloud native)
+  if (process.env.RESEND_API_KEY) {
+    attempted = true;
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: process.env.EMAIL_FROM || 'ZOHARVEST Security <onboarding@resend.dev>',
+          to: [to],
           subject,
-          text,
-          html
-        });
-        console.log(`[EMAIL SMTP SUCCESS] Dispatched to ${to}`);
-      } catch (err) {
-        console.warn('[EMAIL SMTP BLOCKED/TIMED OUT] Outbound SMTP ports blocked by host:', err.message);
+          html,
+          text
+        }),
+        signal: AbortSignal.timeout(5000)
+      });
+      if (res.ok) {
+        console.log(`[RESEND API SUCCESS] Email dispatched to ${to}`);
+        return { success: true, provider: 'resend' };
       }
+      const errText = await res.text();
+      errors.push(`Resend: ${errText}`);
+    } catch (e) {
+      errors.push(`Resend: ${e.message}`);
     }
-  });
+  }
+
+  // 3. Brevo API over HTTPS (Port 443)
+  if (process.env.BREVO_API_KEY) {
+    attempted = true;
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': process.env.BREVO_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: 'ZOHARVEST Security', email: process.env.EMAIL_USER || 'security@zoharvest.in' },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html
+        }),
+        signal: AbortSignal.timeout(5000)
+      });
+      if (res.ok) {
+        console.log(`[BREVO API SUCCESS] Email dispatched to ${to}`);
+        return { success: true, provider: 'brevo' };
+      }
+      const errText = await res.text();
+      errors.push(`Brevo: ${errText}`);
+    } catch (e) {
+      errors.push(`Brevo: ${e.message}`);
+    }
+  }
+
+  // 4. Nodemailer SMTP (for environments where outbound SMTP is open)
+  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    attempted = true;
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        connectionTimeout: 3000,
+        greetingTimeout: 3000,
+        socketTimeout: 3000,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        }
+      });
+
+      await transporter.sendMail({
+        from: `"ZOHARVEST Security" <${process.env.EMAIL_USER}>`,
+        to,
+        subject,
+        text,
+        html
+      });
+      console.log(`[EMAIL SMTP SUCCESS] Email dispatched to ${to}`);
+      return { success: true, provider: 'smtp' };
+    } catch (err) {
+      console.warn('[EMAIL SMTP FAILED/BLOCKED]', err.message);
+      errors.push(`SMTP: ${err.message}`);
+    }
+  }
+
+  return {
+    success: false,
+    configured: attempted,
+    errors
+  };
 }
 
 // ----------------------------------------------------
@@ -1052,6 +1121,7 @@ app.post('/api/auth/email-otp-request', async (req, res) => {
     }
   }
 
+  // Generate cryptographic 6-digit verification code
   const code = String(Math.floor(100000 + Math.random() * 900000));
   emailOtpStore.set(cleanEmail, {
     code,
@@ -1061,20 +1131,33 @@ app.post('/api/auth/email-otp-request', async (req, res) => {
 
   logSecurityEvent('EMAIL_OTP_REQUESTED', { email: cleanEmail }, req);
 
-  // Dispatch email in background without blocking response
-  dispatchEmailAsync({
-    to: cleanEmail,
-    subject: `${code} is your ZOHARVEST Gmail verification code`,
-    text: `Your ZOHARVEST account verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this code, please ignore this email.`,
-    html: `<div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-      <h2 style="color: #065f46; margin-top: 0;">ZOHARVEST B2B Exchange</h2>
-      <p>Please enter the following 6-digit verification code to confirm ownership of your email address:</p>
-      <div style="background: #f0fdf4; border: 2px dashed #059669; padding: 16px; text-align: center; border-radius: 8px; margin: 20px 0;">
-        <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #047857;">${code}</span>
-      </div>
-      <p style="font-size: 12px; color: #64748b;">This code will expire in 10 minutes. If you did not create a ZOHARVEST account, you can safely ignore this email.</p>
-    </div>`
-  });
+  const subject = `${code} is your ZOHARVEST account verification code`;
+  const text = `Your ZOHARVEST account verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this code, please ignore this email.`;
+  const html = `<div style="font-family: Arial, sans-serif; max-width: 500px; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px;">
+    <h2 style="color: #065f46; margin-top: 0;">ZOHARVEST B2B Exchange</h2>
+    <p>Please enter the following 6-digit verification code to confirm ownership of your email address:</p>
+    <div style="background: #f0fdf4; border: 2px dashed #059669; padding: 18px; text-align: center; border-radius: 12px; margin: 24px 0;">
+      <span style="font-size: 34px; font-weight: bold; letter-spacing: 8px; color: #047857;">${code}</span>
+    </div>
+    <p style="font-size: 12px; color: #64748b;">This code will expire in 10 minutes. If you did not create a ZOHARVEST account, you can safely ignore this email.</p>
+  </div>`;
+
+  // Actually attempt real email delivery
+  const dispatchResult = await sendVerificationEmail({ to: cleanEmail, subject, html, text });
+
+  if (!dispatchResult.success) {
+    if (!dispatchResult.configured) {
+      return res.status(503).json({
+        error: 'Email delivery is not configured on this server. Please use 1-click "Sign Up with Google" (no email OTP needed), or configure GMAIL_REFRESH_TOKEN in Render environment settings.',
+        noEmailProvider: true
+      });
+    } else {
+      return res.status(502).json({
+        error: 'Unable to deliver verification email to your address. Please ensure your email is valid or use 1-click "Sign Up with Google".',
+        details: isProduction ? undefined : dispatchResult.errors
+      });
+    }
+  }
 
   pushNotification({
     type: 'email',
@@ -1083,11 +1166,10 @@ app.post('/api/auth/email-otp-request', async (req, res) => {
     message: `Your ZOHARVEST account verification code is: ${code}. Valid for 10 minutes. Enter this code to verify your Gmail address.`
   });
 
-  // Respond immediately so user transitions to OTP screen in <50ms
+  // Secure: NEVER leak code in response!
   res.json({
     success: true,
-    message: `Verification code generated for ${cleanEmail}.`,
-    testOtp: code
+    message: `Verification code dispatched to ${cleanEmail}. Please check your inbox and spam folder.`
   });
 });
 
@@ -1119,16 +1201,9 @@ app.post('/api/auth/register', async (req, res) => {
 
     // MANDATORY EMAIL / GMAIL VERIFICATION
     if (!emailOtp) {
-      const code = String(Math.floor(100000 + Math.random() * 900000));
-      emailOtpStore.set(cleanEmail, {
-        code,
-        expiresAt: Date.now() + 10 * 60 * 1000,
-        attempts: 0
-      });
       return res.status(400).json({ 
-        error: `Verification code required for ${cleanEmail}. Please enter the 6-digit code below.`,
-        requiresOtp: true,
-        testOtp: code
+        error: `Verification code required for ${cleanEmail}. Please enter the 6-digit code sent to your email.`,
+        requiresOtp: true
       });
     }
 
@@ -1331,25 +1406,36 @@ app.post('/api/auth/forgot-password-request', async (req, res) => {
 
   logSecurityEvent('PASSWORD_RESET_CODE_REQUESTED', { email: cleanEmail }, req);
 
-  // Dispatch password setup verification code via Gmail API / HTTPS
-  dispatchEmailAsync({
-    to: cleanEmail,
-    subject: `${code} is your ZOHARVEST password setup verification code`,
-    text: `Your password verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nUse this code to set or reset your account password.`,
-    html: `<div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-      <h2 style="color: #065f46; margin-top: 0;">ZOHARVEST Password Setup</h2>
-      <p>Please enter the following 6-digit code to set or reset your password for <strong>${cleanEmail}</strong>:</p>
-      <div style="background: #f0fdf4; border: 2px dashed #059669; padding: 16px; text-align: center; border-radius: 8px; margin: 20px 0;">
-        <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #047857;">${code}</span>
-      </div>
-      <p style="font-size: 12px; color: #64748b;">Valid for 10 minutes. If you did not request this, you can safely ignore this email.</p>
-    </div>`
-  });
+  const subject = `${code} is your ZOHARVEST password setup verification code`;
+  const text = `Your password verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nUse this code to set or reset your account password.`;
+  const html = `<div style="font-family: Arial, sans-serif; max-width: 500px; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px;">
+    <h2 style="color: #065f46; margin-top: 0;">ZOHARVEST Password Setup</h2>
+    <p>Please enter the following 6-digit code to set or reset your password for <strong>${cleanEmail}</strong>:</p>
+    <div style="background: #f0fdf4; border: 2px dashed #059669; padding: 18px; text-align: center; border-radius: 12px; margin: 24px 0;">
+      <span style="font-size: 34px; font-weight: bold; letter-spacing: 8px; color: #047857;">${code}</span>
+    </div>
+    <p style="font-size: 12px; color: #64748b;">Valid for 10 minutes. If you did not request this, you can safely ignore this email.</p>
+  </div>`;
 
+  const dispatchResult = await sendVerificationEmail({ to: cleanEmail, subject, html, text });
+
+  if (!dispatchResult.success) {
+    if (!dispatchResult.configured) {
+      return res.status(503).json({
+        error: 'Email delivery service is not configured on this server. Please sign in via Google or contact platform administration.',
+        noEmailProvider: true
+      });
+    } else {
+      return res.status(502).json({
+        error: 'Unable to deliver password setup email. Please check your email address or sign in with Google.'
+      });
+    }
+  }
+
+  // Secure: Never leak verification code in response!
   res.json({
     success: true,
-    message: `Verification code generated for ${cleanEmail}.`,
-    testOtp: code,
+    message: `Password setup verification code sent to ${cleanEmail}. Please check your inbox.`,
     email: cleanEmail
   });
 });
@@ -1747,8 +1833,7 @@ app.post('/api/auth/otp-request', (req, res) => {
 
   res.json({
     success: true,
-    message: `6-digit verification code sent to ${cleanPhone}`,
-    ...(isProduction ? {} : { testOtp: code })
+    message: `6-digit verification code sent to ${cleanPhone}`
   });
 });
 
