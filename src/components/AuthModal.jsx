@@ -916,6 +916,27 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                 )}
               </div>
 
+              {/* Inline Error Message directly above submit button */}
+              {errorMessage && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 animate-in fade-in">
+                  <span>{errorMessage}</span>
+                  {errorMessage.toLowerCase().includes('already registered') && (
+                    <button
+                      type="button"
+                      onClick={() => { 
+                        setMode('login'); 
+                        if (email || phone) setEmailOrPhone(email || phone);
+                        setErrorMessage(''); 
+                        setSuccessMessage(''); 
+                      }}
+                      className="bg-emerald-800 hover:bg-emerald-900 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] transition shadow-xs cursor-pointer shrink-0"
+                    >
+                      Switch to Sign In ➜
+                    </button>
+                  )}
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={sendingEmailOtp}

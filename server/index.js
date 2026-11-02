@@ -890,6 +890,139 @@ app.post('/api/orders/:id/verify-and-release', authenticateToken, requireRole('b
 // ----------------------
 
 // ----------------------------------------------------
+// GMAIL REST API (HTTPS PORT 443 - NEVER BLOCKED BY RENDER)
+// ----------------------------------------------------
+let cachedGmailAccessToken = null;
+let gmailTokenExpiresAt = 0;
+
+async function getGmailApiAccessToken() {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    return null;
+  }
+
+  if (cachedGmailAccessToken && Date.now() < gmailTokenExpiresAt - 60000) {
+    return cachedGmailAccessToken;
+  }
+
+  try {
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token'
+      }),
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!tokenRes.ok) {
+      const errText = await tokenRes.text();
+      console.error('[GMAIL API TOKEN ERROR]', tokenRes.status, errText);
+      return null;
+    }
+
+    const tokenData = await tokenRes.json();
+    cachedGmailAccessToken = tokenData.access_token;
+    gmailTokenExpiresAt = Date.now() + ((tokenData.expires_in || 3600) * 1000);
+    return cachedGmailAccessToken;
+  } catch (e) {
+    console.warn('[GMAIL API TOKEN EXCEPTION]', e.message);
+    return null;
+  }
+}
+
+async function sendViaGmailApi({ to, subject, html, text }) {
+  const accessToken = await getGmailApiAccessToken();
+  if (!accessToken) {
+    throw new Error('Gmail API credentials not ready (requires GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GMAIL_REFRESH_TOKEN)');
+  }
+
+  const senderEmail = process.env.EMAIL_USER || 'me';
+  const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+  const messageParts = [
+    `From: "ZOHARVEST Security" <${senderEmail}>`,
+    `To: ${to}`,
+    `Subject: ${utf8Subject}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset=utf-8',
+    'Content-Transfer-Encoding: 7bit',
+    '',
+    html || text
+  ];
+
+  const rawMessage = Buffer.from(messageParts.join('\r\n')).toString('base64url');
+
+  const sendRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ raw: rawMessage }),
+    signal: AbortSignal.timeout(6000)
+  });
+
+  if (!sendRes.ok) {
+    const errText = await sendRes.text();
+    throw new Error(`Gmail API messages.send failed (${sendRes.status}): ${errText}`);
+  }
+
+  const result = await sendRes.json();
+  console.log(`[GMAIL API SUCCESS] Email dispatched via HTTPS to ${to} (Message ID: ${result.id})`);
+  return result;
+}
+
+// Non-blocking asynchronous email dispatcher
+// Priority 1: Gmail REST API over HTTPS (Port 443 - bypasses all Render/cloud SMTP blocks)
+// Priority 2: Nodemailer SMTP with strict 2.5-second timeout fallback (local testing)
+function dispatchEmailAsync({ to, subject, text, html }) {
+  setImmediate(async () => {
+    // 1. Try Gmail REST API over HTTPS (Port 443 - never blocked by Render)
+    if (process.env.GMAIL_REFRESH_TOKEN && process.env.GOOGLE_CLIENT_SECRET) {
+      try {
+        await sendViaGmailApi({ to, subject, html, text });
+        return;
+      } catch (err) {
+        console.warn('[GMAIL API NOTICE]', err.message);
+      }
+    }
+
+    // 2. Fallback to Nodemailer SMTP with strict 2.5s timeout (non-blocking)
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      try {
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          connectionTimeout: 2500,
+          greetingTimeout: 2500,
+          socketTimeout: 2500,
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+          }
+        });
+
+        await transporter.sendMail({
+          from: `"ZOHARVEST Security" <${process.env.EMAIL_USER}>`,
+          to,
+          subject,
+          text,
+          html
+        });
+        console.log(`[EMAIL SMTP SUCCESS] Dispatched to ${to}`);
+      } catch (err) {
+        console.warn('[EMAIL SMTP BLOCKED/TIMED OUT] Outbound SMTP ports blocked by host:', err.message);
+      }
+    }
+  });
+}
+
+// ----------------------------------------------------
 // GMAIL / EMAIL OTP VERIFICATION REQUEST
 // ----------------------------------------------------
 app.post('/api/auth/email-otp-request', async (req, res) => {
@@ -928,48 +1061,20 @@ app.post('/api/auth/email-otp-request', async (req, res) => {
 
   logSecurityEvent('EMAIL_OTP_REQUESTED', { email: cleanEmail }, req);
 
-  let emailDispatchedViaSmtp = false;
-  if (process.env.EMAIL_USER && (process.env.EMAIL_PASS || process.env.GMAIL_REFRESH_TOKEN)) {
-    try {
-      const transporter = nodemailer.createTransport(
-        process.env.GMAIL_REFRESH_TOKEN ? {
-          service: 'gmail',
-          auth: {
-            type: 'OAuth2',
-            user: process.env.EMAIL_USER,
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            refreshToken: process.env.GMAIL_REFRESH_TOKEN
-          }
-        } : {
-          service: 'gmail',
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-          }
-        }
-      );
-
-      await transporter.sendMail({
-        from: `"ZOHARVEST Security" <${process.env.EMAIL_USER}>`,
-        to: cleanEmail,
-        subject: `${code} is your ZOHARVEST Gmail verification code`,
-        text: `Your ZOHARVEST account verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this code, please ignore this email.`,
-        html: `<div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-          <h2 style="color: #065f46; margin-top: 0;">ZOHARVEST B2B Exchange</h2>
-          <p>Please enter the following 6-digit verification code to confirm ownership of your email address:</p>
-          <div style="background: #f0fdf4; border: 2px dashed #059669; padding: 16px; text-align: center; border-radius: 8px; margin: 20px 0;">
-            <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #047857;">${code}</span>
-          </div>
-          <p style="font-size: 12px; color: #64748b;">This code will expire in 10 minutes. If you did not create a ZOHARVEST account, you can safely ignore this email.</p>
-        </div>`
-      });
-      emailDispatchedViaSmtp = true;
-      console.log(`[EMAIL SMTP DISPATCHED] Verification code sent to ${cleanEmail}`);
-    } catch (err) {
-      console.warn('[EMAIL SMTP WARNING] Could not dispatch email via SMTP:', err.message);
-    }
-  }
+  // Dispatch email in background without blocking response
+  dispatchEmailAsync({
+    to: cleanEmail,
+    subject: `${code} is your ZOHARVEST Gmail verification code`,
+    text: `Your ZOHARVEST account verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this code, please ignore this email.`,
+    html: `<div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+      <h2 style="color: #065f46; margin-top: 0;">ZOHARVEST B2B Exchange</h2>
+      <p>Please enter the following 6-digit verification code to confirm ownership of your email address:</p>
+      <div style="background: #f0fdf4; border: 2px dashed #059669; padding: 16px; text-align: center; border-radius: 8px; margin: 20px 0;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #047857;">${code}</span>
+      </div>
+      <p style="font-size: 12px; color: #64748b;">This code will expire in 10 minutes. If you did not create a ZOHARVEST account, you can safely ignore this email.</p>
+    </div>`
+  });
 
   pushNotification({
     type: 'email',
@@ -978,12 +1083,10 @@ app.post('/api/auth/email-otp-request', async (req, res) => {
     message: `Your ZOHARVEST account verification code is: ${code}. Valid for 10 minutes. Enter this code to verify your Gmail address.`
   });
 
+  // Respond immediately so user transitions to OTP screen in <50ms
   res.json({
     success: true,
-    message: emailDispatchedViaSmtp
-      ? `6-digit verification code sent to ${cleanEmail}. Please check your inbox.`
-      : `Verification code generated for ${cleanEmail}.`,
-    emailDispatchedViaSmtp,
+    message: `Verification code generated for ${cleanEmail}.`,
     testOtp: code
   });
 });
@@ -1228,54 +1331,24 @@ app.post('/api/auth/forgot-password-request', async (req, res) => {
 
   logSecurityEvent('PASSWORD_RESET_CODE_REQUESTED', { email: cleanEmail }, req);
 
-  let emailDispatchedViaSmtp = false;
-  if (process.env.EMAIL_USER && (process.env.EMAIL_PASS || process.env.GMAIL_REFRESH_TOKEN)) {
-    try {
-      const transporter = nodemailer.createTransport(
-        process.env.GMAIL_REFRESH_TOKEN ? {
-          service: 'gmail',
-          auth: {
-            type: 'OAuth2',
-            user: process.env.EMAIL_USER,
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            refreshToken: process.env.GMAIL_REFRESH_TOKEN
-          }
-        } : {
-          service: 'gmail',
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-          }
-        }
-      );
-
-      await transporter.sendMail({
-        from: `"ZOHARVEST Security" <${process.env.EMAIL_USER}>`,
-        to: cleanEmail,
-        subject: `${code} is your ZOHARVEST password setup verification code`,
-        text: `Your password verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nUse this code to set or reset your account password.`,
-        html: `<div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-          <h2 style="color: #065f46; margin-top: 0;">ZOHARVEST Password Setup</h2>
-          <p>Please enter the following 6-digit code to set or reset your password for <strong>${cleanEmail}</strong>:</p>
-          <div style="background: #f0fdf4; border: 2px dashed #059669; padding: 16px; text-align: center; border-radius: 8px; margin: 20px 0;">
-            <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #047857;">${code}</span>
-          </div>
-          <p style="font-size: 12px; color: #64748b;">Valid for 10 minutes. If you did not request this, you can safely ignore this email.</p>
-        </div>`
-      });
-      emailDispatchedViaSmtp = true;
-    } catch (e) {
-      console.warn('[EMAIL WARNING] Reset code SMTP dispatch failed:', e.message);
-    }
-  }
+  // Dispatch password setup verification code via Gmail API / HTTPS
+  dispatchEmailAsync({
+    to: cleanEmail,
+    subject: `${code} is your ZOHARVEST password setup verification code`,
+    text: `Your password verification code is: ${code}\n\nThis code will expire in 10 minutes.\n\nUse this code to set or reset your account password.`,
+    html: `<div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+      <h2 style="color: #065f46; margin-top: 0;">ZOHARVEST Password Setup</h2>
+      <p>Please enter the following 6-digit code to set or reset your password for <strong>${cleanEmail}</strong>:</p>
+      <div style="background: #f0fdf4; border: 2px dashed #059669; padding: 16px; text-align: center; border-radius: 8px; margin: 20px 0;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #047857;">${code}</span>
+      </div>
+      <p style="font-size: 12px; color: #64748b;">Valid for 10 minutes. If you did not request this, you can safely ignore this email.</p>
+    </div>`
+  });
 
   res.json({
     success: true,
-    message: emailDispatchedViaSmtp 
-      ? `Verification code dispatched to ${cleanEmail}.` 
-      : `Verification code generated for ${cleanEmail}.`,
-    emailDispatchedViaSmtp,
+    message: `Verification code generated for ${cleanEmail}.`,
     testOtp: code,
     email: cleanEmail
   });
