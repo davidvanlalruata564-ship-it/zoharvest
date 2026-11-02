@@ -44,10 +44,6 @@ export default function NewListingModal({
   const [marketPriceComparison, setMarketPriceComparison] = useState('');
   const [minOrderQty, setMinOrderQty] = useState('');
   const [availableStock, setAvailableStock] = useState('');
-  const [isOrganic, setIsOrganic] = useState(true);
-  const [giTagged, setGiTagged] = useState(false);
-  const [isAdvanceHarvest, setIsAdvanceHarvest] = useState(false);
-  const [harvestDate, setHarvestDate] = useState('Ready in Stock');
   const [description, setDescription] = useState('');
   const [descriptionMizo, setDescriptionMizo] = useState('');
   const [packaging, setPackaging] = useState('Standard 25kg multi-wall jute sacks');
@@ -72,10 +68,6 @@ export default function NewListingModal({
       setMarketPriceComparison(editingProduct.marketPriceComparison ? String(editingProduct.marketPriceComparison) : '');
       setMinOrderQty(editingProduct.minOrderQty ? String(editingProduct.minOrderQty) : '');
       setAvailableStock(editingProduct.availableStock ? String(editingProduct.availableStock) : '');
-      setIsOrganic(Boolean(editingProduct.isOrganic));
-      setGiTagged(Boolean(editingProduct.giTagged));
-      setIsAdvanceHarvest(Boolean(editingProduct.isAdvanceHarvest));
-      setHarvestDate(editingProduct.harvestDate || 'Ready in Stock');
       setDescription(editingProduct.description || '');
       setDescriptionMizo(editingProduct.descriptionMizo || '');
       setPackaging(editingProduct.packaging || 'Standard 25kg multi-wall jute sacks');
@@ -92,10 +84,6 @@ export default function NewListingModal({
       setMarketPriceComparison('');
       setMinOrderQty('');
       setAvailableStock('');
-      setIsOrganic(true);
-      setGiTagged(false);
-      setIsAdvanceHarvest(false);
-      setHarvestDate('Ready in Stock');
       setDescription('');
       setDescriptionMizo('');
       setPackaging('Standard 25kg multi-wall jute sacks');
@@ -203,10 +191,10 @@ export default function NewListingModal({
       marketPriceComparison: marketPriceComparison ? Number(marketPriceComparison) : Math.round(Number(pricePerUnit) * 1.25),
       minOrderQty: Number(minOrderQty),
       availableStock: availableStock ? Number(availableStock) : Number(minOrderQty) * 10,
-      isOrganic,
-      giTagged,
-      isAdvanceHarvest,
-      harvestDate: isAdvanceHarvest ? harvestDate : 'In Stock',
+      isOrganic: false,
+      giTagged: false,
+      isAdvanceHarvest: false,
+      harvestDate: 'In Stock',
       description: description.trim() || 'High-grade harvest sourced directly from Mizoram organic hill slopes.',
       descriptionMizo: descriptionMizo.trim() || 'Mizoram tlangram aṭanga thar chhuah tha tak.',
       packaging,
@@ -537,58 +525,6 @@ export default function NewListingModal({
             </div>
           </div>
 
-          {/* Advance Harvest Pre-Order Section */}
-          <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-200/80 space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-amber-950">
-                <input
-                  type="checkbox"
-                  checked={isAdvanceHarvest}
-                  onChange={(e) => setIsAdvanceHarvest(e.target.checked)}
-                  className="w-4 h-4 accent-amber-600 rounded cursor-pointer"
-                />
-                <span>Enable Advance Harvest Pre-Order (Lock in buyers before crop maturity)</span>
-              </label>
-            </div>
-
-            {isAdvanceHarvest && (
-              <div>
-                <label className="block text-xs font-bold text-amber-900 mb-1">
-                  Expected Harvest Window / Dispatch Schedule
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Advance Harvest: Dec 15 - Dec 28, 2026"
-                  value={harvestDate}
-                  onChange={(e) => setHarvestDate(e.target.value)}
-                  className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-hidden"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Organic & GI Tag Checkboxes */}
-          <div className="flex flex-wrap gap-4 pt-1">
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-              <input
-                type="checkbox"
-                checked={isOrganic}
-                onChange={(e) => setIsOrganic(e.target.checked)}
-                className="w-4 h-4 accent-emerald-700 rounded cursor-pointer"
-              />
-              <span>Certified Organic / Chemical-free</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-              <input
-                type="checkbox"
-                checked={giTagged}
-                onChange={(e) => setGiTagged(e.target.checked)}
-                className="w-4 h-4 accent-amber-600 rounded cursor-pointer"
-              />
-              <span>Geographical Indication (GI Tagged)</span>
-            </label>
-          </div>
 
           {/* Description */}
           <div>

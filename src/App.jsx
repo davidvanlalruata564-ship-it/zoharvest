@@ -50,8 +50,6 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedDistrict, setSelectedDistrict] = useState('all');
   const [selectedGrade, setSelectedGrade] = useState('all');
-  const [onlyOrganic, setOnlyOrganic] = useState(false);
-  const [onlyAdvanceHarvest, setOnlyAdvanceHarvest] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Modals & Drawers
@@ -180,8 +178,6 @@ export default function App() {
     if (selectedCategory !== 'all' && p.category !== selectedCategory) return false;
     if (selectedDistrict !== 'all' && p.district.toLowerCase() !== selectedDistrict.toLowerCase()) return false;
     if (selectedGrade !== 'all' && !p.grade.toLowerCase().includes(selectedGrade.toLowerCase())) return false;
-    if (onlyOrganic && !p.isOrganic) return false;
-    if (onlyAdvanceHarvest && !p.isAdvanceHarvest) return false;
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       const match =
@@ -633,10 +629,6 @@ export default function App() {
               setSelectedDistrict={setSelectedDistrict}
               selectedGrade={selectedGrade}
               setSelectedGrade={setSelectedGrade}
-              onlyOrganic={onlyOrganic}
-              setOnlyOrganic={setOnlyOrganic}
-              onlyAdvanceHarvest={onlyAdvanceHarvest}
-              setOnlyAdvanceHarvest={setOnlyAdvanceHarvest}
               onOpenRFQModal={(p) => setRfqProduct(p)}
               onOpenProductDetail={(p) => setSelectedProductDetail(p)}
               onOpenUserProfile={(sellerId) => setViewingSellerId(sellerId)}

@@ -3,10 +3,8 @@ import {
   X, 
   MapPin, 
   ShieldCheck, 
-  Award, 
   Calendar, 
   Package, 
-  Sparkles, 
   CheckCircle2, 
   TrendingDown,
   Building,
@@ -60,18 +58,6 @@ export default function ProductDetailModal({
               </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex flex-col justify-end p-6 text-white">
-              <div className="flex items-center gap-2 mb-1">
-                {product.giTagged && (
-                  <span className="bg-amber-500 text-slate-950 font-extrabold text-[10px] uppercase px-2 py-0.5 rounded shadow-sm">
-                    GI Tag Certified
-                  </span>
-                )}
-                {product.isOrganic && (
-                  <span className="bg-emerald-600 text-white font-bold text-[10px] px-2 py-0.5 rounded shadow-sm">
-                    Organic NPOP
-                  </span>
-                )}
-              </div>
               <h4 
                 onClick={() => {
                   onClose();
@@ -169,14 +155,16 @@ export default function ProductDetailModal({
               </div>
 
               {/* Certifications Badges */}
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {product.certifications.map((c, i) => (
-                  <span key={i} className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-medium flex items-center gap-1 border border-slate-200">
-                    <Check className="w-3 h-3 text-emerald-600" />
-                    <span>{c}</span>
-                  </span>
-                ))}
-              </div>
+              {product.certifications && product.certifications.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {product.certifications.map((c, i) => (
+                    <span key={i} className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-medium flex items-center gap-1 border border-slate-200">
+                      <Check className="w-3 h-3 text-emerald-600" />
+                      <span>{c}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Direct Contact & P2P Settlement Actions */}

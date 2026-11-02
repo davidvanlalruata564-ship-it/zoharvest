@@ -2,8 +2,8 @@ export const translations = {
   en: {
     brandName: 'ZOHARVEST',
     tagline: 'Mizoram Farm-to-Business Direct Exchange',
-    heroTitle: 'Direct from Mizoram’s Organic Farms & Artisans',
-    heroSubtitle: 'Source premium harvest, groceries, and authentic crafts straight from local farmer cooperatives. Zero middlemen markups, transparent prices, and direct seller contact.',
+    heroTitle: 'Direct Farm Produce & Groceries from Mizoram',
+    heroSubtitle: 'Browse harvest lots and local pantry goods straight from grassroots growers. View Instagram-style seller profiles, chat directly on WhatsApp, and pay via GPay or Bank Transfer with 0% platform fee.',
     navMarketplace: 'Marketplace',
     navRFQ: 'Negotiate',
     navEscrow: 'Orders & Escrow',
@@ -59,8 +59,8 @@ export const translations = {
   mz: {
     brandName: 'ZOHARVEST',
     tagline: 'Mizoram Thlai & Kut Kutchhuak Direct Wholesale Hmunpui',
-    heroTitle: 'Mizoram Loneitu & Kutchhuak Siamtute Hnen Atangin Tlang',
-    heroSubtitle: 'A kara sumdawng (middlemen) awm lovin, loneitu leh kut kutchhuak siamtute thlai tha ber ber man tlawm leh rintlak takin lei rawh.',
+    heroTitle: 'Mizoram Thlai & Kut Kutchhuak Hralhtu Hnen Aṭanga Tlang',
+    heroSubtitle: 'A kara sumdawng awm lovin, hralhtu profile en la, WhatsApp-ah be la, GPay emaw Bank transfer hmangin tlang takin inbia rawh.',
     navMarketplace: 'Marketplace',
     navRFQ: 'Inbiakremna',
     navEscrow: 'Hralhna & Escrow',
