@@ -22,8 +22,7 @@ import {
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '360587275546-930r3jboqt9jed504oa438upknfosgok.apps.googleusercontent.com';
 
 export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = [], t, currentLang }) {
-  if (!isOpen) return null;
-
+  // NOTE: All hooks MUST come before any early return (React Rules of Hooks)
   const [mode, setMode] = useState('login'); // 'login' | 'register' | 'phone_otp'
   const [registerStep, setRegisterStep] = useState('form'); // 'form' | 'otp'
   const [showPassword, setShowPassword] = useState(false);
@@ -55,6 +54,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [emailOtpNotice, setEmailOtpNotice] = useState('');
   const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
+
+  // Dynamic Password Policy Checks (NIST SP 800-63B standards)
+  const hasMinLength = password.length >= 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const isPasswordValid = hasMinLength && hasUpper && hasLower && hasNumber;
 
   // Cryptographic Google GIS verification handler
   const handleGoogleCredentialResponse = async (response) => {
@@ -101,25 +107,40 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
   const triggerGooglePrompt = () => {
     if (typeof window !== 'undefined' && window.google?.accounts?.id) {
       try {
+        // Re-initialize to ensure latest callback/role/district are captured
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
           callback: handleGoogleCredentialResponse,
           auto_select: false,
           itp_support: true,
+          ux_mode: 'popup', // Use popup mode (GIS manages it safely via postMessage)
         });
-        window.google.accounts.id.prompt();
+        // prompt() shows the One Tap / account-picker overlay — does NOT open a new browser window
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed()) {
+            // GIS couldn't show overlay (e.g. dismissed too many times, incognito, browser policy)
+            setErrorMessage('Google sign-in prompt was blocked by your browser. Please check if pop-ups or third-party cookies are enabled, then try again.');
+          }
+          if (notification.isSkippedMoment()) {
+            console.info('[GIS] Prompt skipped:', notification.getSkippedReason());
+          }
+        });
       } catch (e) {
         console.warn('Google prompt failed:', e);
+        setErrorMessage('Google sign-in failed to open. Please try again or use email/password login.');
       }
     } else {
-      setErrorMessage('Google Identity Services is loading. Please check your internet connection.');
+      setErrorMessage('Google Identity Services is still loading. Please wait a moment and try again.');
     }
   };
 
   useEffect(() => {
     if (!isOpen) return;
 
-    const renderButtons = () => {
+    // Initialize GIS with callback only — do NOT use renderButton() which causes blank
+    // popup windows (accounts.google.com/gsi/transform). The custom buttons below call
+    // triggerGooglePrompt() which shows the safe One Tap overlay / account picker instead.
+    const initGIS = () => {
       if (typeof window !== 'undefined' && window.google?.accounts?.id) {
         try {
           window.google.accounts.id.initialize({
@@ -129,40 +150,16 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
             cancel_on_tap_outside: true,
             itp_support: true,
           });
-
-          const loginContainer = document.getElementById('google-btn-login');
-          if (loginContainer) {
-            loginContainer.innerHTML = '';
-            window.google.accounts.id.renderButton(loginContainer, {
-              theme: 'outline',
-              size: 'large',
-              width: 320,
-              text: 'continue_with',
-              shape: 'pill'
-            });
-          }
-
-          const regContainer = document.getElementById('google-btn-register');
-          if (regContainer) {
-            regContainer.innerHTML = '';
-            window.google.accounts.id.renderButton(regContainer, {
-              theme: 'outline',
-              size: 'large',
-              width: 320,
-              text: 'signup_with',
-              shape: 'pill'
-            });
-          }
         } catch (err) {
           console.warn('Google Identity Services initialization warning:', err);
         }
       }
     };
 
-    const timer = setTimeout(renderButtons, 120);
+    const timer = setTimeout(initGIS, 120);
     const interval = setInterval(() => {
       if (window.google?.accounts?.id) {
-        renderButtons();
+        initGIS();
         clearInterval(interval);
       }
     }, 300);
@@ -226,8 +223,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
       setErrorMessage('Please enter a valid email address.');
       return;
     }
-    if (!password || password.length < 8) {
-      setErrorMessage('Password must be at least 8 characters long and contain letters and numbers.');
+    if (!isPasswordValid) {
+      setErrorMessage('Password must be at least 8 characters long and contain uppercase letters (A-Z), lowercase letters (a-z), and numbers (0-9).');
       return;
     }
 
@@ -237,7 +234,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
       const res = await fetch('/api/auth/email-otp-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() })
+        body: JSON.stringify({ 
+          email: email.trim().toLowerCase(),
+          phone: phone.trim()
+        })
       });
 
       const data = await res.json();
@@ -397,6 +397,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
     }
   };
 
+  // Early return AFTER all hooks to respect React Rules of Hooks
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="relative bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
@@ -458,15 +461,20 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
 
         {/* Feedback Alerts */}
         {errorMessage && (
-          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 flex flex-wrap items-center justify-between gap-2">
+          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
             <span>{errorMessage}</span>
             {errorMessage.toLowerCase().includes('already registered') && (
               <button
                 type="button"
-                onClick={() => { setMode('login'); setErrorMessage(''); setSuccessMessage(''); }}
-                className="bg-emerald-800 hover:bg-emerald-900 text-white font-bold px-3 py-1 rounded-lg text-[11px] transition shadow-xs cursor-pointer shrink-0"
+                onClick={() => { 
+                  setMode('login'); 
+                  if (email || phone) setEmailOrPhone(email || phone);
+                  setErrorMessage(''); 
+                  setSuccessMessage(''); 
+                }}
+                className="bg-emerald-800 hover:bg-emerald-900 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] transition shadow-xs cursor-pointer shrink-0 flex items-center gap-1"
               >
-                Switch to Sign In ➜
+                <span>Switch to Sign In ➜</span>
               </button>
             )}
           </div>
@@ -482,13 +490,25 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
         {mode === 'login' && (
           <form onSubmit={handleLogin} className="p-6 space-y-4">
             
-            {/* Real Cryptographic Google Sign In */}
+            {/* Google Sign In — uses prompt() overlay (no popup window to avoid blank screen) */}
             <div className="w-full flex flex-col items-center justify-center pt-1 pb-1">
-              <div id="google-btn-login" className="flex justify-center min-h-[44px]"></div>
               <button
                 type="button"
                 onClick={triggerGooglePrompt}
-                className="mt-2 text-[11px] text-stone-500 hover:text-emerald-800 flex items-center gap-1.5 transition cursor-pointer"
+                className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-stone-300 rounded-full bg-white hover:bg-stone-50 text-sm font-medium text-stone-700 shadow-xs transition cursor-pointer"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                  <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                  <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+                  <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                </svg>
+                <span>Continue with Google</span>
+              </button>
+              <button
+                type="button"
+                onClick={triggerGooglePrompt}
+                className="mt-2 text-[11px] text-stone-400 hover:text-emerald-700 flex items-center gap-1.5 transition cursor-pointer"
               >
                 <Sparkles className="w-3 h-3 text-amber-500" />
                 <span>Click here if Google prompt did not appear</span>
@@ -577,13 +597,25 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
               </div>
             </div>
 
-            {/* Real Cryptographic Google Sign Up */}
+            {/* Google Sign Up — uses prompt() overlay (no popup window to avoid blank screen) */}
             <div className="w-full flex flex-col items-center justify-center pt-1 pb-1">
-              <div id="google-btn-register" className="flex justify-center min-h-[44px]"></div>
               <button
                 type="button"
                 onClick={triggerGooglePrompt}
-                className="mt-2 text-[11px] text-stone-500 hover:text-emerald-800 flex items-center gap-1.5 transition cursor-pointer"
+                className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-stone-300 rounded-full bg-white hover:bg-stone-50 text-sm font-medium text-stone-700 shadow-xs transition cursor-pointer"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                  <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                  <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+                  <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                </svg>
+                <span>Sign up with Google</span>
+              </button>
+              <button
+                type="button"
+                onClick={triggerGooglePrompt}
+                className="mt-2 text-[11px] text-stone-400 hover:text-emerald-700 flex items-center gap-1.5 transition cursor-pointer"
               >
                 <Sparkles className="w-3 h-3 text-amber-500" />
                 <span>Click here if Google prompt did not appear</span>
@@ -682,6 +714,35 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+
+                {password && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-2 text-[10px]">
+                    <span className={`flex items-center gap-1 font-semibold ${hasMinLength ? 'text-emerald-700' : 'text-slate-400'}`}>
+                      <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${hasMinLength ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-400'}`}>
+                        {hasMinLength ? '✓' : '•'}
+                      </span>
+                      8+ chars
+                    </span>
+                    <span className={`flex items-center gap-1 font-semibold ${hasUpper ? 'text-emerald-700' : 'text-slate-400'}`}>
+                      <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${hasUpper ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-400'}`}>
+                        {hasUpper ? '✓' : '•'}
+                      </span>
+                      Upper (A-Z)
+                    </span>
+                    <span className={`flex items-center gap-1 font-semibold ${hasLower ? 'text-emerald-700' : 'text-slate-400'}`}>
+                      <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${hasLower ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-400'}`}>
+                        {hasLower ? '✓' : '•'}
+                      </span>
+                      Lower (a-z)
+                    </span>
+                    <span className={`flex items-center gap-1 font-semibold ${hasNumber ? 'text-emerald-700' : 'text-slate-400'}`}>
+                      <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${hasNumber ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-400'}`}>
+                        {hasNumber ? '✓' : '•'}
+                      </span>
+                      Number (0-9)
+                    </span>
+                  </div>
+                )}
               </div>
 
               <button

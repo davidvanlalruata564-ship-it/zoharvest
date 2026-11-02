@@ -206,7 +206,7 @@ app.use(
         baseUri: ["'self'"],
         formAction: ["'self'"],
         frameAncestors: ["'none'"],
-        ...(isProduction ? { upgradeInsecureRequests: [] } : {})
+        upgradeInsecureRequests: isProduction ? [] : null
       }
     },
     hsts: {
@@ -217,6 +217,7 @@ app.use(
     frameguard: { action: 'deny' },
     noSniff: true,
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    originAgentCluster: false,
     crossOriginOpenerPolicy: false,
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' }
@@ -942,7 +943,7 @@ app.post('/api/orders/:id/verify-and-release', authenticateToken, requireRole('b
 // GMAIL / EMAIL OTP VERIFICATION REQUEST
 // ----------------------------------------------------
 app.post('/api/auth/email-otp-request', async (req, res) => {
-  const { email } = req.body;
+  const { email, phone } = req.body;
   if (!email || !validator.isEmail(email)) {
     return res.status(400).json({ error: 'A valid email address is required.' });
   }
@@ -955,6 +956,17 @@ app.post('/api/auth/email-otp-request', async (req, res) => {
       error: `An account with ${cleanEmail} is already registered. Please sign in or use Google.`,
       alreadyRegistered: true 
     });
+  }
+
+  if (phone) {
+    const cleanPhone = phone.trim();
+    const existingPhone = users.find(u => u.phone === cleanPhone);
+    if (existingPhone) {
+      return res.status(409).json({
+        error: `An account with phone number ${cleanPhone} is already registered. Please sign in.`,
+        alreadyRegistered: true
+      });
+    }
   }
 
   const code = String(Math.floor(100000 + Math.random() * 900000));

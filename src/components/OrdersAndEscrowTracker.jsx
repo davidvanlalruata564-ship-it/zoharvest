@@ -268,8 +268,8 @@ export default function OrdersAndEscrowTracker({
                     {order.status === 'Dispatched' && (
                       <div className="space-y-1.5">
                         <div className="text-[11px] font-semibold text-slate-600 bg-slate-50 p-2 rounded border border-slate-200">
-                          <div className="font-bold text-blue-800">{order.dispatchInfo.carrier}</div>
-                          <div className="font-mono text-[10px] text-slate-500">Track: {order.dispatchInfo.trackingNumber}</div>
+                          <div className="font-bold text-blue-800">{order.dispatchInfo?.carrier || 'Carrier Dispatched'}</div>
+                          <div className="font-mono text-[10px] text-slate-500">Track: {order.dispatchInfo?.trackingNumber || 'Tracking Pending'}</div>
                         </div>
                         <button
                           onClick={() => setVerifyModalOrder(order)}
