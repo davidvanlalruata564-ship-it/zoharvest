@@ -49,6 +49,7 @@ export default function NewListingModal({
   const [description, setDescription] = useState('');
   const [descriptionMizo, setDescriptionMizo] = useState('');
   const [packaging, setPackaging] = useState('Standard 25kg multi-wall jute sacks');
+  const [stockStatus, setStockStatus] = useState('in_stock'); // 'in_stock' | 'low_stock' | 'sold_out'
 
   // Image State
   const [imagePreview, setImagePreview] = useState('');
@@ -75,6 +76,7 @@ export default function NewListingModal({
       setDescription(editingProduct.description || '');
       setDescriptionMizo(editingProduct.descriptionMizo || '');
       setPackaging(editingProduct.packaging || 'Standard 25kg multi-wall jute sacks');
+      setStockStatus(editingProduct.stockStatus || 'in_stock');
       setImagePreview(editingProduct.images?.[0] || '');
       setImageFileName(editingProduct.images?.[0] ? 'Current Product Photo' : '');
     } else {
@@ -91,6 +93,7 @@ export default function NewListingModal({
       setDescription('');
       setDescriptionMizo('');
       setPackaging('Standard 25kg multi-wall jute sacks');
+      setStockStatus('in_stock');
       setImagePreview('');
       setImageFileName('');
     }
@@ -192,8 +195,9 @@ export default function NewListingModal({
       nameMizo: nameMizo.trim() || name.trim(),
       category,
       district,
-      fpoName: currentUser?.organization || 'Mizoram Producer Co-op',
-      sellerId: currentUser?.id || 'user-farmer-1',
+      fpoName: currentUser?.organization || currentUser?.name || 'Local Producer',
+      sellerId: currentUser?.id || 'user-grower',
+      stockStatus,
       grade,
       unit,
       pricePerUnit: Number(pricePerUnit),
@@ -541,6 +545,53 @@ export default function NewListingModal({
             </div>
           </div>
 
+
+          {/* Stock Availability Status Selector */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
+            <label className="block text-xs font-bold text-slate-800">
+              Produce Stock Availability Status
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setStockStatus('in_stock')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
+                  stockStatus === 'in_stock'
+                    ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span>In Stock</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStockStatus('low_stock')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
+                  stockStatus === 'low_stock'
+                    ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span>Low Stock</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStockStatus('sold_out')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
+                  stockStatus === 'sold_out'
+                    ? 'bg-rose-600 text-white border-rose-700 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                <span>Sold Out</span>
+              </button>
+            </div>
+          </div>
 
           {/* Description */}
           <div>

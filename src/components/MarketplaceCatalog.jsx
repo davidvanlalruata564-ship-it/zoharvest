@@ -48,6 +48,18 @@ export default function MarketplaceCatalog({
       
       {/* Category Navigation Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {currentUser?.following && currentUser.following.length > 0 && (
+          <button
+            onClick={() => setSelectedCategory('following')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              selectedCategory === 'following'
+                ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                : 'bg-white text-stone-700 hover:bg-stone-50 hover:text-emerald-950 border border-stone-200/80 shadow-2xs'
+            }`}
+          >
+            <span>⭐ From Following ({currentUser.following.length})</span>
+          </button>
+        )}
         {categories.map((cat) => {
           const IconComponent = CATEGORY_ICONS[cat.id] || Layers;
           const isSelected = selectedCategory === cat.id;
@@ -178,6 +190,20 @@ export default function MarketplaceCatalog({
                   className="relative h-48 w-full overflow-hidden bg-stone-100 cursor-pointer" 
                   onClick={() => onOpenProductDetail(product)}
                 >
+                  {/* Stock Availability Badge */}
+                  {product.stockStatus === 'sold_out' || product.availableStock === 0 ? (
+                    <div className="absolute top-2.5 right-2.5 z-10 bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md">
+                      Sold Out
+                    </div>
+                  ) : product.stockStatus === 'low_stock' ? (
+                    <div className="absolute top-2.5 right-2.5 z-10 bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow-md">
+                      Low Stock
+                    </div>
+                  ) : (
+                    <div className="absolute top-2.5 right-2.5 z-10 bg-emerald-700/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md backdrop-blur-xs">
+                      In Stock
+                    </div>
+                  )}
                   {isOwnListing && (
                     <div className="absolute top-2.5 left-2.5 z-10 bg-emerald-950/90 border border-amber-400/60 text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 backdrop-blur-xs">
                       <User className="w-3 h-3 text-emerald-400" />

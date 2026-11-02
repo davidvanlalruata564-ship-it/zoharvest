@@ -2013,8 +2013,8 @@ app.get('/api/users/:id/public-profile', (req, res) => {
       },
       stats: {
         postsCount: userProducts.length,
-        followersCount: Array.isArray(targetUser.followers) ? targetUser.followers.length : (120 + userProducts.length * 5),
-        followingCount: Array.isArray(targetUser.following) ? targetUser.following.length : 8
+        followersCount: Array.isArray(targetUser.followers) ? targetUser.followers.length : 0,
+        followingCount: Array.isArray(targetUser.following) ? targetUser.following.length : 0
       },
       followers: targetUser.followers || [],
       following: targetUser.following || [],
@@ -2022,6 +2022,89 @@ app.get('/api/users/:id/public-profile', (req, res) => {
       posts: userProducts,
       collections
     }
+  });
+});
+
+// Toggle Follow / Unfollow User API
+app.post('/api/users/:id/follow', authenticateToken, (req, res) => {
+  const targetId = req.params.id;
+  const currentUserId = req.user.id;
+
+  if (targetId === currentUserId) {
+    return res.status(400).json({ error: 'You cannot follow your own profile.' });
+  }
+
+  const currentUser = users.find(u => u.id === currentUserId);
+  const targetUser = users.find(u => u.id === targetId || u.organization === targetId || u.name === targetId);
+
+  if (!currentUser) return res.status(404).json({ error: 'Current user not found.' });
+  if (!targetUser) return res.status(404).json({ error: 'Target profile not found.' });
+
+  if (!Array.isArray(currentUser.following)) currentUser.following = [];
+  if (!Array.isArray(targetUser.followers)) targetUser.followers = [];
+
+  const isFollowing = currentUser.following.includes(targetUser.id);
+
+  if (isFollowing) {
+    // Unfollow
+    currentUser.following = currentUser.following.filter(id => id !== targetUser.id);
+    targetUser.followers = targetUser.followers.filter(id => id !== currentUser.id);
+  } else {
+    // Follow
+    currentUser.following.push(targetUser.id);
+    targetUser.followers.push(currentUser.id);
+  }
+
+  saveDb();
+
+  res.json({
+    success: true,
+    isFollowing: !isFollowing,
+    followersCount: targetUser.followers.length,
+    followingCount: Array.isArray(targetUser.following) ? targetUser.following.length : 0
+  });
+});
+
+// User Network (Followers & Following lists) API
+app.get('/api/users/:id/network', (req, res) => {
+  const targetId = req.params.id;
+  const targetUser = users.find(u => u.id === targetId || u.organization === targetId || u.name === targetId);
+  if (!targetUser) return res.status(404).json({ error: 'User not found.' });
+
+  const followerIds = Array.isArray(targetUser.followers) ? targetUser.followers : [];
+  const followingIds = Array.isArray(targetUser.following) ? targetUser.following : [];
+
+  const mapToCard = (uid) => {
+    const u = users.find(x => x.id === uid);
+    if (!u) {
+      return {
+        id: uid,
+        name: 'Member',
+        username: 'member',
+        organization: 'Community Member',
+        district: 'Mizoram',
+        avatarUrl: null,
+        isVerified: false,
+        postsCount: products.filter(p => p.sellerId === uid).length
+      };
+    }
+    const cleanUsername = (u.organization || u.name || 'member').toLowerCase().replace(/[^a-z0-9]/g, '_');
+    return {
+      id: u.id,
+      name: u.name,
+      username: cleanUsername,
+      organization: u.organization || u.name,
+      district: u.district || 'Mizoram',
+      avatarUrl: u.avatarUrl || null,
+      isVerified: Boolean(u.isVerified),
+      postsCount: products.filter(p => p.sellerId === u.id || (u.organization && p.fpoName === u.organization)).length
+    };
+  };
+
+  res.json({
+    success: true,
+    followers: followerIds.map(mapToCard),
+    following: followingIds.map(mapToCard)
   });
 });
 

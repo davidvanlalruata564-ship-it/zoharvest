@@ -22,10 +22,14 @@ import {
   Sparkles,
   BarChart3,
   Camera,
-  Loader2
+  Loader2,
+  UserCheck,
+  UserPlus,
+  Users
 } from 'lucide-react';
 
 import { compressImage, formatBytes } from '../utils/imageCompressor';
+import FollowersModal from './FollowersModal';
 
 export default function ProfilePage({
   profileUserId,
@@ -36,6 +40,7 @@ export default function ProfilePage({
   onOpenNewListing,
   onEditProduct,
   onDeleteProduct,
+  onNavigateUser,
   onBack,
   onLogout
 }) {
@@ -49,6 +54,13 @@ export default function ProfilePage({
   const [toastMessage, setToastMessage] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef(null);
+
+  // Followers & Following System States
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
+  const [networkModalTab, setNetworkModalTab] = useState('followers');
 
   // Target User ID (either passed or logged-in user)
   const targetId = profileUserId || currentUser?.id;
@@ -154,6 +166,15 @@ export default function ProfilePage({
             } else {
               setProfile(p);
             }
+
+            const fCount = Array.isArray(p.followers) ? p.followers.length : (p.stats?.followersCount || 0);
+            const ingCount = Array.isArray(p.following) ? p.following.length : (p.stats?.followingCount || 0);
+            setFollowersCount(fCount);
+            setFollowingCount(ingCount);
+
+            if (currentUser && Array.isArray(p.followers)) {
+              setIsFollowing(p.followers.includes(currentUser.id));
+            }
           }
         }
       } catch (e) {
@@ -166,6 +187,39 @@ export default function ProfilePage({
     fetchProfile();
     return () => { mounted = false; };
   }, [targetId, isOwnProfile, currentUser]);
+
+  // Handle follow toggle with optimistic UI
+  const handleFollowToggle = async () => {
+    if (!currentUser) {
+      setToastMessage('Please sign in to follow profiles.');
+      setTimeout(() => setToastMessage(''), 3000);
+      return;
+    }
+    if (!profile?.id) return;
+
+    const nextState = !isFollowing;
+    setIsFollowing(nextState);
+    setFollowersCount(prev => nextState ? prev + 1 : Math.max(0, prev - 1));
+
+    try {
+      const token = localStorage.getItem('zh_token');
+      const res = await fetch(`/api/users/${encodeURIComponent(profile.id)}/follow`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsFollowing(data.isFollowing);
+        setFollowersCount(data.followersCount);
+        setToastMessage(data.isFollowing ? `Now following @${profile.username || profile.name}` : `Unfollowed @${profile.username || profile.name}`);
+        setTimeout(() => setToastMessage(''), 2500);
+      }
+    } catch (err) {
+      // Revert on error
+      setIsFollowing(!nextState);
+      setFollowersCount(prev => nextState ? Math.max(0, prev - 1) : prev + 1);
+    }
+  };
 
   const copyToClipboard = (text, key) => {
     if (!text) return;
@@ -402,7 +456,7 @@ export default function ProfilePage({
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons: Edit Profile or Follow / GPay */}
               <div className="flex items-center gap-2">
                 {isOwnProfile ? (
                   <button
@@ -413,35 +467,76 @@ export default function ProfilePage({
                     <span>Edit Profile</span>
                   </button>
                 ) : (
-                  <button
-                    onClick={() => setActiveTab('payout')}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-500 text-slate-950 transition cursor-pointer flex items-center gap-1.5 shadow-xs"
-                  >
-                    <CreditCard className="w-3.5 h-3.5" />
-                    <span>GPay & Payment</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleFollowToggle}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer shadow-xs flex items-center gap-1.5 ${
+                        isFollowing
+                          ? 'bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-300'
+                          : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                      }`}
+                    >
+                      {isFollowing ? (
+                        <>
+                          <UserCheck className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Following</span>
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="w-3.5 h-3.5 text-amber-300" />
+                          <span>Follow</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('payout')}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-500 text-slate-950 transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>Payment</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Quick Metrics (Listings & Verification) */}
+            {/* Quick Metrics: Listings, Followers (Clickable), Following (Clickable) */}
             <div className="flex items-center gap-6 text-xs pt-1 border-y border-slate-100 py-2">
               <div>
                 <span className="font-extrabold text-slate-900 block text-sm">{allUserPosts.length}</span>
                 <span className="text-slate-500 text-[11px]">Listings</span>
               </div>
-              <div>
-                <span className="font-extrabold text-emerald-700 block text-sm">
-                  {profile?.isVerified ? 'Verified' : 'Active'}
+
+              {/* Clickable Followers Counter */}
+              <button
+                onClick={() => {
+                  setNetworkModalTab('followers');
+                  setIsFollowersModalOpen(true);
+                }}
+                className="text-left cursor-pointer group"
+                title="View Followers list"
+              >
+                <span className="font-extrabold text-slate-900 block text-sm group-hover:text-emerald-700 transition">
+                  {followersCount}
                 </span>
-                <span className="text-slate-500 text-[11px]">Status</span>
-              </div>
-              <div>
-                <span className="font-extrabold text-slate-900 block text-sm">
-                  {profile?.district || 'Mizoram'}
+                <span className="text-slate-500 text-[11px] group-hover:underline">Followers</span>
+              </button>
+
+              {/* Clickable Following Counter */}
+              <button
+                onClick={() => {
+                  setNetworkModalTab('following');
+                  setIsFollowersModalOpen(true);
+                }}
+                className="text-left cursor-pointer group"
+                title="View Following list"
+              >
+                <span className="font-extrabold text-slate-900 block text-sm group-hover:text-emerald-700 transition">
+                  {followingCount}
                 </span>
-                <span className="text-slate-500 text-[11px]">Region</span>
-              </div>
+                <span className="text-slate-500 text-[11px] group-hover:underline">Following</span>
+              </button>
             </div>
 
             {/* Bio Description */}
@@ -825,39 +920,45 @@ export default function ProfilePage({
                 </span>
               </div>
 
-              <div className="bg-white/10 p-3 rounded-xl border border-white/15 space-y-2">
-                <div>
-                  <div className="text-[10px] text-emerald-300 uppercase font-semibold">UPI ID</div>
-                  <div className="font-mono font-bold text-xs text-white break-all flex items-center justify-between gap-2 mt-0.5">
-                    <span>{profile?.upiId || 'Not configured yet'}</span>
-                    {profile?.upiId && (
-                      <button
-                        onClick={() => copyToClipboard(profile.upiId, 'upi')}
-                        className="text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded-md transition font-sans font-bold shrink-0 cursor-pointer flex items-center gap-1"
-                      >
-                        {copiedKey === 'upi' ? <Check className="w-3 h-3 text-amber-300" /> : <Copy className="w-3 h-3" />}
-                        <span>{copiedKey === 'upi' ? 'Copied' : 'Copy'}</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {profile?.gpayNumber && (
-                  <div className="pt-1 border-t border-white/10">
-                    <div className="text-[10px] text-emerald-300 uppercase font-semibold">GPay Mobile Number</div>
-                    <div className="font-mono font-bold text-xs text-white flex items-center justify-between gap-2 mt-0.5">
-                      <span>{profile.gpayNumber}</span>
-                      <button
-                        onClick={() => copyToClipboard(profile.gpayNumber, 'gpay')}
-                        className="text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded-md transition font-sans font-bold shrink-0 cursor-pointer flex items-center gap-1"
-                      >
-                        {copiedKey === 'gpay' ? <Check className="w-3 h-3 text-amber-300" /> : <Copy className="w-3 h-3" />}
-                        <span>{copiedKey === 'gpay' ? 'Copied' : 'Copy'}</span>
-                      </button>
+              {profile?.upiId || profile?.gpayNumber ? (
+                <div className="bg-white/10 p-3 rounded-xl border border-white/15 space-y-2">
+                  {profile?.upiId && (
+                    <div>
+                      <div className="text-[10px] text-emerald-300 uppercase font-semibold">UPI ID</div>
+                      <div className="font-mono font-bold text-xs text-white break-all flex items-center justify-between gap-2 mt-0.5">
+                        <span>{profile.upiId}</span>
+                        <button
+                          onClick={() => copyToClipboard(profile.upiId, 'upi')}
+                          className="text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded-md transition font-sans font-bold shrink-0 cursor-pointer flex items-center gap-1"
+                        >
+                          {copiedKey === 'upi' ? <Check className="w-3 h-3 text-amber-300" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedKey === 'upi' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+
+                  {profile?.gpayNumber && (
+                    <div className={profile?.upiId ? "pt-1 border-t border-white/10" : ""}>
+                      <div className="text-[10px] text-emerald-300 uppercase font-semibold">GPay Mobile Number</div>
+                      <div className="font-mono font-bold text-xs text-white flex items-center justify-between gap-2 mt-0.5">
+                        <span>{profile.gpayNumber}</span>
+                        <button
+                          onClick={() => copyToClipboard(profile.gpayNumber, 'gpay')}
+                          className="text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded-md transition font-sans font-bold shrink-0 cursor-pointer flex items-center gap-1"
+                        >
+                          {copiedKey === 'gpay' ? <Check className="w-3 h-3 text-amber-300" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedKey === 'gpay' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-white/10 p-3.5 rounded-xl border border-white/15 text-center text-xs text-emerald-200">
+                  No GPay or UPI ID configured yet.
+                </div>
+              )}
 
               {!isOwnProfile && profile?.upiId && (
                 <a
@@ -921,7 +1022,7 @@ export default function ProfilePage({
                 </div>
               ) : (
                 <div className="bg-white p-4 rounded-xl border border-slate-200 text-center text-xs text-slate-500">
-                  No bank account details configured yet.
+                  No direct bank account configured yet.
                 </div>
               )}
             </div>
@@ -929,6 +1030,30 @@ export default function ProfilePage({
           </div>
 
         </div>
+      )}
+
+      {/* Followers & Following Network Modal */}
+      {isFollowersModalOpen && (
+        <FollowersModal
+          isOpen={isFollowersModalOpen}
+          onClose={() => setIsFollowersModalOpen(false)}
+          userId={profile?.id || targetId}
+          username={profile?.username || profile?.name}
+          initialTab={networkModalTab}
+          currentUser={currentUser}
+          onSelectUser={(newUserId) => {
+            setIsFollowersModalOpen(false);
+            if (onNavigateUser) {
+              onNavigateUser(newUserId);
+            }
+          }}
+          onFollowToggle={(targetUid, nowFollowing) => {
+            // Update following count if looking at own profile
+            if (isOwnProfile) {
+              setFollowingCount(prev => nowFollowing ? prev + 1 : Math.max(0, prev - 1));
+            }
+          }}
+        />
       )}
 
     </div>

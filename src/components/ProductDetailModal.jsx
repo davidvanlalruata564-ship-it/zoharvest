@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { 
   X, 
+  Share2,
   MapPin, 
   ShieldCheck, 
   Calendar, 
@@ -30,6 +31,15 @@ export default function ProductDetailModal({
   if (!product) return null;
 
   const [showDirectPayHint, setShowDirectPayHint] = useState(false);
+  const [copiedShare, setCopiedShare] = useState(false);
+
+  const handleShareProduct = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2500);
+    }
+  };
 
   // Website recognizes own listing
   const isOwnProduct = Boolean(
@@ -44,13 +54,29 @@ export default function ProductDetailModal({
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="relative bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8">
         
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-slate-900/40 hover:bg-slate-900/70 text-white transition"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Top Actions: Share & Close */}
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5">
+          <button
+            onClick={handleShareProduct}
+            className="p-2 rounded-full bg-slate-900/40 hover:bg-slate-900/70 text-white transition cursor-pointer"
+            title="Share this listing"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full bg-slate-900/40 hover:bg-slate-900/70 text-white transition cursor-pointer"
+            title="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {copiedShare && (
+          <div className="absolute top-16 right-4 z-20 bg-emerald-800 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg animate-in fade-in">
+            Listing link copied!
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2">
           
@@ -103,10 +129,24 @@ export default function ProductDetailModal({
           {/* Produce Details & Contact */}
           <div className="p-6 md:p-8 flex flex-col justify-between space-y-5">
             <div>
-              <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">
-                <span>{product.grade}</span>
-                <span>•</span>
-                <span>{product.unit}</span>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider mb-1 flex-wrap">
+                <span className="text-emerald-800">{product.grade}</span>
+                <span className="text-slate-300">•</span>
+                <span className="text-emerald-800">{product.unit}</span>
+                <span className="text-slate-300">•</span>
+                {product.stockStatus === 'sold_out' || product.availableStock === 0 ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-300">
+                    Sold Out
+                  </span>
+                ) : product.stockStatus === 'low_stock' ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
+                    Low Stock
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    In Stock
+                  </span>
+                )}
               </div>
 
               <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight">

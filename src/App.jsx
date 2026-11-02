@@ -155,7 +155,11 @@ export default function App() {
     if (p.moderationStatus === 'quarantined') return false;
     // Hide posts from blocked users
     if (currentUser?.blockedUsers && p.sellerId && currentUser.blockedUsers.includes(p.sellerId)) return false;
-    if (selectedCategory !== 'all' && p.category !== selectedCategory) return false;
+    if (selectedCategory === 'following') {
+      if (!currentUser?.following || !currentUser.following.includes(p.sellerId)) return false;
+    } else if (selectedCategory !== 'all' && p.category !== selectedCategory) {
+      return false;
+    }
     if (selectedDistrict !== 'all' && p.district.toLowerCase() !== selectedDistrict.toLowerCase()) return false;
     if (selectedGrade !== 'all' && !p.grade.toLowerCase().includes(selectedGrade.toLowerCase())) return false;
     if (searchTerm) {
@@ -481,6 +485,7 @@ export default function App() {
                 setIsNewListingOpen(true);
               }}
               onDeleteProduct={handleDeleteProduct}
+              onNavigateUser={handleOpenUserProfile}
               onBack={() => {
                 setViewingSellerId(null);
                 setActiveTab('marketplace');
