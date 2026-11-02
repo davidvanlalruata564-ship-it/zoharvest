@@ -219,23 +219,13 @@ export default function AdminVerificationHub({
           </button>
 
           <button
-            onClick={() => setActiveTab('ledger')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-              activeTab === 'ledger' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Scale className="w-3.5 h-3.5" />
-            <span>Escrow Ledger</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('districts')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
               activeTab === 'districts' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5" />
-            <span>11 Districts</span>
+            <span>Districts Overview</span>
           </button>
         </div>
       </div>
@@ -243,35 +233,35 @@ export default function AdminVerificationHub({
       {/* Top Stats Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Platform GMV</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Produce Listings</span>
           <div className="text-2xl font-extrabold text-slate-900 font-sans">
-            ₹{(stats?.totalGMV || 510000).toLocaleString('en-IN')}
+            {products.length} Posts
           </div>
-          <span className="text-[11px] text-emerald-700 font-medium">Fulfilled & Active marketplace trades</span>
+          <span className="text-[11px] text-emerald-700 font-medium">Active marketplace harvest lots</span>
         </div>
 
         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Commission Revenue (2.5%)</span>
-          <div className="text-2xl font-extrabold text-amber-600 font-sans">
-            ₹{(stats?.totalCommissionRevenue || 12750).toLocaleString('en-IN')}
-          </div>
-          <span className="text-[11px] text-amber-700 font-medium">Automated platform take rate</span>
-        </div>
-
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Escrow Liabilities</span>
-          <div className="text-2xl font-extrabold text-blue-700 font-sans">
-            ₹{(stats?.activeEscrowAmount || 210000).toLocaleString('en-IN')}
-          </div>
-          <span className="text-[11px] text-blue-800 font-medium">Secured in neutral escrow vault</span>
-        </div>
-
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Registered Enterprises</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Verified Accounts</span>
           <div className="text-2xl font-extrabold text-emerald-800 font-sans">
-            {users.length} Entities
+            {users.filter(u => u.isVerified).length} Verified
           </div>
-          <span className="text-[11px] text-slate-500">{users.filter(u => u.isVerified).length} verified KYC compliance passes</span>
+          <span className="text-[11px] text-emerald-700 font-medium">Identity & contact validated</span>
+        </div>
+
+        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-1">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Registered Accounts</span>
+          <div className="text-2xl font-extrabold text-slate-900 font-sans">
+            {users.length} Users
+          </div>
+          <span className="text-[11px] text-slate-500 font-medium">Community member accounts</span>
+        </div>
+
+        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-1">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quarantined / Flagged</span>
+          <div className="text-2xl font-extrabold text-amber-600 font-sans">
+            {products.filter(p => p.moderationStatus === 'quarantined').length} Flagged
+          </div>
+          <span className="text-[11px] text-amber-700 font-medium">Under moderation review</span>
         </div>
       </div>
 
@@ -335,8 +325,7 @@ export default function AdminVerificationHub({
                 onChange={(e) => setNewRole(e.target.value)}
                 className="w-full p-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl"
               >
-                <option value="farmer">Farmer / FPO Producer</option>
-                <option value="buyer">Wholesale Buyer</option>
+                <option value="farmer">Standard Account (Produce & Groceries Member)</option>
                 <option value="admin">Platform Administrator</option>
               </select>
             </div>
@@ -798,76 +787,7 @@ export default function AdminVerificationHub({
         </div>
       )}
 
-      {/* TAB 5: ESCROW LEDGER AUDIT */}
-      {activeTab === 'ledger' && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <Scale className="w-5 h-5 text-emerald-700" />
-              <span>Escrow Contract Ledger & Dispute Oversight</span>
-            </h3>
-            <span className="text-xs text-slate-500 font-medium">
-              Zero Intermediary Leakage • Guaranteed Farm-Gate Settlement
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 uppercase font-semibold">
-                  <th className="pb-3">PO Reference</th>
-                  <th className="pb-3">Buyer ➔ Producer</th>
-                  <th className="pb-3">Contract Value</th>
-                  <th className="pb-3">Platform Fee (2.5%)</th>
-                  <th className="pb-3">Net Farm Payout</th>
-                  <th className="pb-3">Current Escrow Phase</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-slate-50 transition">
-                    <td className="py-3.5 font-mono font-bold text-slate-900">
-                      {order.id}
-                      <span className="block text-[10px] text-slate-400 font-normal">
-                        {order.productName} ({order.quantity} {order.unit})
-                      </span>
-                    </td>
-
-                    <td className="py-3.5">
-                      <div className="font-bold text-slate-800">{order.buyerName}</div>
-                      <div className="text-[11px] text-emerald-800 font-medium">➔ {order.sellerName}</div>
-                    </td>
-
-                    <td className="py-3.5 font-mono font-bold text-slate-900">
-                      ₹{order.totalCommodityAmount?.toLocaleString('en-IN')}
-                    </td>
-
-                    <td className="py-3.5 font-mono font-bold text-amber-600">
-                      ₹{order.platformFeeAmount?.toLocaleString('en-IN')}
-                    </td>
-
-                    <td className="py-3.5 font-mono font-extrabold text-emerald-900">
-                      ₹{order.netPayableToSeller?.toLocaleString('en-IN')}
-                    </td>
-
-                    <td className="py-3.5">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                        order.status === 'Settled' ? 'bg-green-100 text-green-800' :
-                        order.status === 'Dispatched' ? 'bg-blue-100 text-blue-800' :
-                        order.status === 'Escrow_Paid' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {order.status.replace('_', ' ')}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 6: 11 DISTRICTS REGIONAL ANALYTICS */}
+      {/* TAB 5: DISTRICTS REGIONAL OVERVIEW */}
       {activeTab === 'districts' && (
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-6">
           <div>

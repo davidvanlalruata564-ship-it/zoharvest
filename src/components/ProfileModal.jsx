@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   X, 
   User, 
@@ -15,8 +15,13 @@ import {
   Save,
   KeyRound,
   Store,
-  Sparkles
+  Sparkles,
+  Camera,
+  Trash2,
+  Loader2,
+  Upload
 } from 'lucide-react';
+import { compressImage, formatBytes } from '../utils/imageCompressor';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '360587275546-930r3jboqt9jed504oa438upknfosgok.apps.googleusercontent.com';
 
@@ -57,6 +62,11 @@ export default function ProfileModal({
   }, [initialTab, isOpen]);
 
   // General fields
+  const [avatarUrl, setAvatarUrl] = useState(currentUser.avatarUrl || '');
+  const [avatarStats, setAvatarStats] = useState(null);
+  const [compressingAvatar, setCompressingAvatar] = useState(false);
+  const avatarInputRef = useRef(null);
+
   const [name, setName] = useState(currentUser.name || '');
   const [phone, setPhone] = useState(currentUser.phone || '');
   const [organization, setOrganization] = useState(currentUser.organization || '');
@@ -84,6 +94,39 @@ export default function ProfileModal({
 
   const token = localStorage.getItem('zh_token');
 
+  // Handle avatar file selection & auto-downscaling
+  const handleAvatarPick = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMsg('Please select a valid image file (JPG, PNG, or WebP).');
+      return;
+    }
+
+    setCompressingAvatar(true);
+    setErrorMsg('');
+
+    try {
+      const result = await compressImage(file, {
+        maxWidth: 400,
+        maxHeight: 400,
+        quality: 0.8,
+        cropToSquare: true
+      });
+      setAvatarUrl(result.dataUrl);
+      setAvatarStats({
+        orig: formatBytes(result.originalSize),
+        comp: formatBytes(result.compressedSize),
+        saved: result.savedPercent
+      });
+    } catch (err) {
+      setErrorMsg('Failed to process avatar image.');
+    } finally {
+      setCompressingAvatar(false);
+    }
+  };
+
   // Submit profile details
   const handleSaveProfile = async (e) => {
     e.preventDefault();
@@ -108,6 +151,7 @@ export default function ProfileModal({
           district,
           address,
           bio,
+          avatarUrl,
           gstinOrFpoNumber,
           instagram,
           website,
@@ -386,6 +430,79 @@ export default function ProfileModal({
         {/* Tab 1: General Profile */}
         {activeTab === 'general' && (
           <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
+
+            {/* Profile Photo Upload & Auto-Downscale Card */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
+              <div className="relative shrink-0">
+                <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-full overflow-hidden bg-white border-2 border-emerald-600 shadow-sm flex items-center justify-center text-2xl font-black text-emerald-800">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{name ? name[0].toUpperCase() : '👤'}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 text-center sm:text-left space-y-1">
+                <div className="text-xs font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-1.5">
+                  <Camera className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Profile Photo</span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Large camera photos are automatically downscaled to ~40KB to save device storage and bandwidth.
+                </p>
+
+                {avatarStats && (
+                  <div className="text-emerald-800 text-[10px] font-bold bg-emerald-100/70 px-2 py-0.5 rounded w-fit mx-auto sm:mx-0">
+                    ⚡ Compressed {avatarStats.orig} ➔ {avatarStats.comp} ({avatarStats.saved}% saved)
+                  </div>
+                )}
+
+                <div className="pt-1 flex items-center justify-center sm:justify-start gap-2">
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={compressingAvatar}
+                    className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                  >
+                    {compressingAvatar ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Downscaling...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3 h-3" />
+                        <span>{avatarUrl ? 'Change Photo' : 'Upload Photo'}</span>
+                      </>
+                    )}
+                  </button>
+
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAvatarUrl('');
+                        setAvatarStats(null);
+                      }}
+                      className="px-2.5 py-1 text-red-600 hover:bg-red-50 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Remove</span>
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  accept="image/*"
+                  onChange={handleAvatarPick}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Full Legal Name</label>

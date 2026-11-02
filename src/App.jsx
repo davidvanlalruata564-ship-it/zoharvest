@@ -6,8 +6,6 @@ import ProductDetailModal from './components/ProductDetailModal';
 import ProfilePage from './components/ProfilePage';
 import MobileBottomNav from './components/MobileBottomNav';
 import AdminVerificationHub from './components/AdminVerificationHub';
-import AboutPage from './components/AboutPage';
-import DonationPage from './components/DonationPage';
 import NotificationsDrawer from './components/NotificationsDrawer';
 import NewListingModal from './components/NewListingModal';
 import AuthModal from './components/AuthModal';
@@ -608,6 +606,10 @@ export default function App() {
         onOpenAuthModal={() => setIsAuthOpen(true)}
         onOpenProfile={handleOpenProfile}
         onOpenUserProfile={handleOpenUserProfile}
+        onOpenNewListing={() => {
+          setEditingProduct(null);
+          setIsNewListingOpen(true);
+        }}
         onLogout={handleLogout}
       />
 
@@ -727,26 +729,6 @@ export default function App() {
           )
         )}
 
-        {/* Completely Free About Us Tab */}
-        {(activeTab === 'business' || activeTab === 'about') && (
-          <AboutPage
-            onNavigateTab={(tab) => {
-              setViewingSellerId(null);
-              setActiveTab(tab);
-            }}
-            t={t}
-            currentLang={currentLang}
-          />
-        )}
-
-        {/* Community Donations & Impact Tab */}
-        {activeTab === 'donate' && (
-          <DonationPage
-            t={t}
-            currentLang={currentLang}
-          />
-        )}
-
       </main>
 
       {/* MODALS */}
@@ -817,60 +799,54 @@ export default function App() {
       />
 
       {/* Footer */}
-      <footer className="bg-stone-950 text-stone-300 border-t border-stone-800/80 py-12 px-4 sm:px-6 lg:px-8 mt-auto text-xs">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="space-y-2.5">
-            <div className="font-extrabold text-xl text-white tracking-tight">
-              ZO<span className="text-amber-400">HARVEST</span>
+      <footer className="bg-stone-950 text-stone-400 border-t border-stone-800/80 py-8 px-4 sm:px-6 lg:px-8 mt-auto text-xs">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-800 text-amber-400 flex items-center justify-center font-bold text-sm shadow-xs">
+              🌿
             </div>
-            <p className="text-stone-400 text-xs leading-relaxed">
-              Mizoram’s direct agricultural exchange connecting local farmer collectives and artisans with verified wholesale buyers.
-            </p>
-            <p className="text-[11px] text-stone-500">
-              Babutlang, Aizawl, Mizoram — 796001
-            </p>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-amber-300 uppercase tracking-wider text-[11px] mb-2.5">Platform Values</h4>
-            <ul className="space-y-1.5 text-stone-400 text-xs">
-              <li>• Direct Farm-Gate Pricing</li>
-              <li>• Direct WhatsApp & Phone Contact</li>
-              <li>• Direct GPay & Bank Payouts</li>
-              <li>• 0% Platform Commission</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-amber-300 uppercase tracking-wider text-[11px] mb-2.5">Key Produce & Crafts</h4>
-            <ul className="space-y-1.5 text-stone-400 text-xs">
-              <li>• Champhai Bird’s Eye Chilli</li>
-              <li>• Kolasib Mountain Ginger</li>
-              <li>• Serchhip Curcumin Turmeric</li>
-              <li>• Lunglei Artisanal Bamboo & Cane Crafts</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-amber-300 uppercase tracking-wider text-[11px] mb-2.5">Mizoram Direct Trade</h4>
-            <p className="text-stone-400 text-xs leading-relaxed">
-              Eliminating intermediary layers to deliver fresh, verified organic produce to national markets while ensuring fair compensation for grower families.
-            </p>
-            <div className="mt-4 text-[10px] text-stone-500 font-mono">
-              © 2026 ZOHARVEST • Built for Mizoram Producers
+            <div>
+              <div className="font-extrabold text-base text-white tracking-tight">
+                ZO<span className="text-amber-400">HARVEST</span>
+              </div>
+              <p className="text-[11px] text-stone-500">Mizoram Direct Farm Produce & Groceries</p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-5 text-xs font-semibold text-stone-400">
+            <button 
+              onClick={() => { setViewingSellerId(null); setActiveTab('marketplace'); }} 
+              className="hover:text-white transition cursor-pointer"
+            >
+              Marketplace
+            </button>
+            <button 
+              onClick={() => { setViewingSellerId(null); setActiveTab('profile'); }} 
+              className="hover:text-white transition cursor-pointer"
+            >
+              My Profile
+            </button>
+            {authenticatedUser?.role === 'admin' && (
+              <button 
+                onClick={() => setActiveTab('admin')} 
+                className="text-amber-400 hover:text-amber-300 transition cursor-pointer font-bold"
+              >
+                Admin Hub
+              </button>
+            )}
+          </div>
+
+          <div className="text-[11px] text-stone-500">
+            Babutlang, Aizawl, Mizoram — 796001 • © 2026 ZOHARVEST
           </div>
         </div>
       </footer>
 
       {/* Mobile App-Style Bottom Navigation */}
       <MobileBottomNav
-        activeTab={activeTab === 'business' ? 'about' : activeTab}
+        activeTab={activeTab}
         onNavigate={(tab) => {
-          if (tab === 'about') {
-            setViewingSellerId(null);
-            setActiveTab('business');
-          } else if (tab === 'profile') {
+          if (tab === 'profile') {
             setViewingSellerId(null);
             setActiveTab('profile');
           } else {

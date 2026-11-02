@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowLeft, 
   Settings, 
@@ -25,12 +25,16 @@ import {
   UserPlus,
   Sparkles,
   BarChart3,
-  AlertCircle
+  AlertCircle,
+  Camera,
+  Upload,
+  Loader2
 } from 'lucide-react';
 
 import NetworkModal from './NetworkModal';
 import ContactCardModal from './ContactCardModal';
 import BlockedUsersModal from './BlockedUsersModal';
+import { compressImage, formatBytes } from '../utils/imageCompressor';
 
 export default function ProfilePage({
   profileUserId,
@@ -62,6 +66,65 @@ export default function ProfilePage({
   const [menuOpen, setMenuOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef(null);
+
+  // Handle client-side profile picture selection & downscaling
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setToastMessage('Please select a valid image file (JPG, PNG, or WebP).');
+      setTimeout(() => setToastMessage(''), 3000);
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setToastMessage('Downscaling & optimizing photo...');
+
+    try {
+      const result = await compressImage(file, {
+        maxWidth: 400,
+        maxHeight: 400,
+        quality: 0.8,
+        cropToSquare: true
+      });
+
+      const token = localStorage.getItem('zh_token');
+      const res = await fetch('/api/users/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ avatarUrl: result.dataUrl })
+      });
+
+      if (res.ok) {
+        setProfile(prev => ({ ...prev, avatarUrl: result.dataUrl }));
+        if (currentUser) {
+          currentUser.avatarUrl = result.dataUrl;
+        }
+        const stored = localStorage.getItem('zh_user');
+        if (stored) {
+          const u = JSON.parse(stored);
+          u.avatarUrl = result.dataUrl;
+          localStorage.setItem('zh_user', JSON.stringify(u));
+        }
+        setToastMessage(`Profile picture updated! Compressed ${formatBytes(result.originalSize)} ➔ ${formatBytes(result.compressedSize)} (${result.savedPercent}% saved)`);
+      } else {
+        const err = await res.json();
+        setToastMessage(err.error || 'Failed to update avatar');
+      }
+    } catch (err) {
+      setToastMessage('Failed to process image file');
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+      setTimeout(() => setToastMessage(''), 4500);
+    }
+  };
 
   // Target User ID (either passed or logged-in user)
   const targetId = profileUserId || currentUser?.id;
@@ -399,6 +462,32 @@ export default function ProfilePage({
                 )}
               </div>
             </div>
+
+            {/* Quick Set / Edit Profile Picture Button (Own Profile Only) */}
+            {isOwnProfile && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  className="absolute bottom-0 right-0 p-1.5 rounded-full bg-slate-900 text-amber-300 hover:bg-slate-800 border-2 border-white shadow-md transition cursor-pointer group"
+                  title="Change profile picture (auto-downscaled to save space)"
+                >
+                  {uploadingAvatar ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5 group-hover:scale-110 transition" />
+                  )}
+                </button>
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+              </>
+            )}
           </div>
 
           {/* Profile Name & Primary Action */}

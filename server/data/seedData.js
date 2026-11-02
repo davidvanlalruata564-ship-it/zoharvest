@@ -18,7 +18,7 @@ export const initialUsers = [
     id: 'user-admin',
     name: 'ZOHARVEST Platform Admin',
     email: 'admin@zoharvest.in',
-    passwordHash: '$2b$10$nDKIFh8HTVgF0OtFli6KZ.lF6YPJsdwPFUMHamTP/NX/FLajSLcem', // 'Admin@123'
+    passwordHash: '$2b$10$nDKIFh8HTVgF0OtFli6KZ.lF6YPJsdwPFUMHamTP/NX/FLajSLcem',
     role: 'admin',
     organization: 'ZOHARVEST Trust & Platform Safety',
     phone: '+91 94361 00000',

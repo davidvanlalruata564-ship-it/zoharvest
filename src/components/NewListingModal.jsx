@@ -13,8 +13,10 @@ import {
   Trash2,
   AlertTriangle,
   CheckCircle2,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
+import { compressImage, formatBytes } from '../utils/imageCompressor';
 
 export default function NewListingModal({
   isOpen,
@@ -52,6 +54,8 @@ export default function NewListingModal({
   const [imagePreview, setImagePreview] = useState('');
   const [imageFileName, setImageFileName] = useState('');
   const [imageError, setImageError] = useState('');
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionStats, setCompressionStats] = useState(null);
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -118,8 +122,8 @@ export default function NewListingModal({
   const cannotSubmitBecausePhotoLimit = hasSelectedPhoto && isPhotoQuotaFull;
   const cannotSubmitBecauseTextLimit = !hasSelectedPhoto && isTextQuotaFull;
 
-  // Handle local image file selection
-  const handleFileChange = (e) => {
+  // Handle local image file selection with client-side auto-downscaling
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -128,30 +132,35 @@ export default function NewListingModal({
       return;
     }
 
-    // Limit client file read to 10MB to avoid browser lag
-    if (file.size > 10 * 1024 * 1024) {
-      setImageError('Selected image is larger than 10MB. Please choose a smaller image.');
-      return;
-    }
-
     setImageError('');
     setServerError('');
     setImageFileName(file.name);
+    setIsCompressing(true);
 
-    const reader = new FileReader();
-    reader.onload = (loadEvt) => {
-      setImagePreview(loadEvt.target.result);
-    };
-    reader.onerror = () => {
-      setImageError('Failed to read image file.');
-    };
-    reader.readAsDataURL(file);
+    try {
+      const result = await compressImage(file, {
+        maxWidth: 1000,
+        maxHeight: 1000,
+        quality: 0.78
+      });
+      setImagePreview(result.dataUrl);
+      setCompressionStats({
+        orig: formatBytes(result.originalSize),
+        comp: formatBytes(result.compressedSize),
+        saved: result.savedPercent
+      });
+    } catch (err) {
+      setImageError('Failed to process image. Please try a different photo.');
+    } finally {
+      setIsCompressing(false);
+    }
   };
 
   const handleRemovePhoto = () => {
     setImagePreview('');
     setImageFileName('');
     setImageError('');
+    setCompressionStats(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -342,10 +351,17 @@ export default function NewListingModal({
                   <div className="font-bold text-slate-900 truncate max-w-[280px]">
                     {imageFileName || 'Selected Produce Photo'}
                   </div>
-                  <div className="text-emerald-700 flex items-center gap-1 text-[11px] font-semibold">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Server will automatically convert & compress to small WebP</span>
-                  </div>
+                  {compressionStats ? (
+                    <div className="text-emerald-800 flex items-center gap-1.5 text-[11px] font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80 w-fit">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Optimized: {compressionStats.orig} ➔ {compressionStats.comp} ({compressionStats.saved}% space saved)</span>
+                    </div>
+                  ) : (
+                    <div className="text-emerald-700 flex items-center gap-1 text-[11px] font-semibold">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Auto-compressed for web storage</span>
+                    </div>
+                  )}
                   <div className="pt-1 flex gap-2">
                     <button
                       type="button"

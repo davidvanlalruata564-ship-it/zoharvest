@@ -1,5 +1,5 @@
 import React from 'react';
-import { Store, Search, PlusCircle, Users, User, Compass } from 'lucide-react';
+import { Store, PlusCircle, User, UserCheck } from 'lucide-react';
 
 export default function MobileBottomNav({
   activeTab,
@@ -9,7 +9,7 @@ export default function MobileBottomNav({
   onOpenAuth
 }) {
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-3 flex justify-around items-center shadow-lg safe-area-bottom">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-6 flex justify-around items-center shadow-lg safe-area-bottom">
       
       {/* 1. Feed / Marketplace */}
       <button
@@ -24,20 +24,7 @@ export default function MobileBottomNav({
         <span className="text-[10px]">Market</span>
       </button>
 
-      {/* 2. Explore / Highlights */}
-      <button
-        onClick={() => onNavigate('explore')}
-        className={`flex flex-col items-center gap-1 cursor-pointer transition ${
-          activeTab === 'explore'
-            ? 'text-emerald-800 font-extrabold'
-            : 'text-slate-500 hover:text-slate-800'
-        }`}
-      >
-        <Compass className={`w-5 h-5 ${activeTab === 'explore' ? 'stroke-[2.5]' : ''}`} />
-        <span className="text-[10px]">Explore</span>
-      </button>
-
-      {/* 3. Primary Add Post Button */}
+      {/* 2. Primary Add Post Button */}
       <button
         onClick={() => {
           if (!currentUser) {
@@ -47,7 +34,7 @@ export default function MobileBottomNav({
           }
         }}
         className="flex flex-col items-center gap-1 cursor-pointer -mt-4 group"
-        title="Post Produce Listing"
+        title="Post Produce"
       >
         <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 to-amber-400 text-slate-950 flex items-center justify-center shadow-lg group-hover:scale-105 transition border-2 border-white">
           <PlusCircle className="w-6 h-6 stroke-[2.5]" />
@@ -55,20 +42,7 @@ export default function MobileBottomNav({
         <span className="text-[10px] font-extrabold text-slate-900">Post</span>
       </button>
 
-      {/* 4. About / Mission */}
-      <button
-        onClick={() => onNavigate('about')}
-        className={`flex flex-col items-center gap-1 cursor-pointer transition ${
-          activeTab === 'about'
-            ? 'text-emerald-800 font-extrabold'
-            : 'text-slate-500 hover:text-slate-800'
-        }`}
-      >
-        <Users className={`w-5 h-5 ${activeTab === 'about' ? 'stroke-[2.5]' : ''}`} />
-        <span className="text-[10px]">About</span>
-      </button>
-
-      {/* 5. Profile Page */}
+      {/* 3. Profile Page */}
       <button
         onClick={() => {
           if (!currentUser) {
@@ -96,6 +70,21 @@ export default function MobileBottomNav({
         </div>
         <span className="text-[10px]">Profile</span>
       </button>
+
+      {/* 4. Admin Dashboard (if admin) */}
+      {currentUser?.role === 'admin' && (
+        <button
+          onClick={() => onNavigate('admin')}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition ${
+            activeTab === 'admin'
+              ? 'text-emerald-800 font-extrabold'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <UserCheck className={`w-5 h-5 ${activeTab === 'admin' ? 'stroke-[2.5]' : ''}`} />
+          <span className="text-[10px]">Admin</span>
+        </button>
+      )}
 
     </nav>
   );

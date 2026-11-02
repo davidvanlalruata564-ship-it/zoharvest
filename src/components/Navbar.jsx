@@ -11,9 +11,7 @@ import {
   LogOut,
   LogIn,
   Settings,
-  Heart,
-  Sparkles,
-  Share2
+  PlusCircle
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -30,6 +28,7 @@ export default function Navbar({
   onOpenAuthModal,
   onOpenProfile,
   onOpenUserProfile,
+  onOpenNewListing,
   onLogout
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -47,9 +46,18 @@ export default function Navbar({
       }
     } else {
       if (onOpenUserProfile && tab === 'marketplace') {
-        onOpenUserProfile(null); // clears viewing other seller
+        onOpenUserProfile(null);
       }
       setActiveTab(tab);
+    }
+    setMobileMenuOpen(false);
+  };
+
+  const handlePostClick = () => {
+    if (!authenticatedUser) {
+      onOpenAuthModal();
+    } else if (onOpenNewListing) {
+      onOpenNewListing();
     }
     setMobileMenuOpen(false);
   };
@@ -60,7 +68,7 @@ export default function Navbar({
       <div className="bg-emerald-950 text-emerald-100/90 text-xs py-1.5 px-4 sm:px-8 flex justify-between items-center font-medium">
         <div className="flex items-center gap-2">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-          <span>Mizoram Farm-Direct Marketplace • Direct P2P Wholesale</span>
+          <span>Mizoram Direct Farm Produce & Groceries</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="hidden md:inline text-emerald-300/80 text-[11px]">Grassroots Growers & Pantry</span>
@@ -89,76 +97,60 @@ export default function Navbar({
                   ZO<span className="text-amber-600">HARVEST</span>
                 </span>
                 <span className="text-[9px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                  Direct
+                  Groceries
                 </span>
               </div>
               <p className="text-[11px] text-stone-500 font-medium hidden sm:block">
-                {t.tagline || 'Mizoram Farm-to-Buyer Direct Marketplace'}
+                Direct Farm Produce Exchange
               </p>
             </div>
           </div>
 
           {/* Center Navigation Links (Desktop) */}
-          <nav className="hidden lg:flex items-center gap-1.5 bg-stone-100/80 p-1.5 rounded-2xl border border-stone-200/70">
+          <nav className="hidden lg:flex items-center gap-2 bg-stone-100/80 p-1.5 rounded-2xl border border-stone-200/70">
             <button
               onClick={() => handleNavClick('marketplace')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
                 activeTab === 'marketplace'
                   ? 'bg-emerald-800 text-white shadow-xs'
                   : 'text-stone-600 hover:text-emerald-900 hover:bg-white/70'
               }`}
             >
-              <Store className="w-3.5 h-3.5" />
+              <Store className="w-4 h-4" />
               <span>{t.navMarketplace || 'Marketplace'}</span>
             </button>
 
             <button
-              onClick={() => handleNavClick('business')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                activeTab === 'business'
-                  ? 'bg-emerald-800 text-white shadow-xs'
-                  : 'text-stone-600 hover:text-emerald-900 hover:bg-white/70'
-              }`}
+              onClick={handlePostClick}
+              className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 transition cursor-pointer shadow-xs"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>{t.navBusinessModel || 'About Us'}</span>
-            </button>
-
-            <button
-              onClick={() => handleNavClick('donate')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                activeTab === 'donate'
-                  ? 'bg-emerald-800 text-white shadow-xs'
-                  : 'text-amber-800 bg-amber-50/70 hover:bg-amber-100/70 border border-amber-200/60'
-              }`}
-            >
-              <Heart className="w-3.5 h-3.5 text-amber-600 fill-amber-500/20" />
-              <span>{t.navDonate || 'Donate'}</span>
+              <PlusCircle className="w-4 h-4" />
+              <span>Post Produce</span>
             </button>
 
             <button
               onClick={() => handleNavClick('profile')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
                 activeTab === 'profile'
                   ? 'bg-emerald-800 text-white shadow-xs'
                   : 'text-stone-600 hover:text-emerald-900 hover:bg-white/70'
               }`}
             >
-              <User className="w-3.5 h-3.5" />
+              <User className="w-4 h-4" />
               <span>My Profile & Posts</span>
             </button>
 
             {authenticatedUser?.role === 'admin' && (
               <button
                 onClick={() => handleNavClick('admin')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
                   activeTab === 'admin'
                     ? 'bg-emerald-800 text-white shadow-xs'
                     : 'text-stone-600 hover:text-emerald-900 hover:bg-white/70'
                 }`}
               >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>Admin</span>
+                <UserCheck className="w-4 h-4" />
+                <span>Admin Hub</span>
               </button>
             )}
           </nav>
@@ -171,7 +163,7 @@ export default function Navbar({
                 <button
                   onClick={() => handleNavClick('profile')}
                   className="flex items-center gap-2 text-left hover:opacity-85 transition cursor-pointer"
-                  title="View your Instagram-style Profile & Posts"
+                  title="View your Profile & Listings"
                 >
                   <div className="w-7 h-7 rounded-full bg-emerald-800 text-amber-300 flex items-center justify-center font-bold text-xs shadow-xs overflow-hidden">
                     {authenticatedUser?.avatarUrl ? (
@@ -185,14 +177,14 @@ export default function Navbar({
                       {authenticatedUser?.name || 'My Profile'}
                     </div>
                     <div className="text-[10px] text-emerald-800 font-semibold truncate max-w-[120px]">
-                      {authenticatedUser?.organization || authenticatedUser?.district || 'Profile'}
+                      {authenticatedUser?.district ? `${authenticatedUser.district}` : 'Active Account'}
                     </div>
                   </div>
                 </button>
 
                 <button
                   onClick={onOpenProfile}
-                  title="Profile Settings & Payment Details"
+                  title="Edit Profile Picture & Settings"
                   className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500 hover:text-stone-800 transition cursor-pointer"
                 >
                   <Settings className="w-3.5 h-3.5" />
@@ -249,7 +241,7 @@ export default function Navbar({
           
           <button
             onClick={() => handleNavClick('marketplace')}
-            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 ${
+            className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
               activeTab === 'marketplace' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'
             }`}
           >
@@ -258,28 +250,16 @@ export default function Navbar({
           </button>
 
           <button
-            onClick={() => handleNavClick('business')}
-            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 ${
-              activeTab === 'business' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'
-            }`}
+            onClick={handlePostClick}
+            className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 bg-amber-400 text-slate-950 shadow-xs"
           >
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            <span>About Us</span>
-          </button>
-
-          <button
-            onClick={() => handleNavClick('donate')}
-            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 ${
-              activeTab === 'donate' ? 'bg-emerald-800 text-white' : 'text-amber-800 bg-amber-50/70 hover:bg-amber-100/70'
-            }`}
-          >
-            <Heart className="w-4 h-4 text-amber-600 fill-amber-500/20" />
-            <span>Donate</span>
+            <PlusCircle className="w-4 h-4" />
+            <span>+ Post Produce</span>
           </button>
 
           <button
             onClick={() => handleNavClick('profile')}
-            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 ${
+            className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
               activeTab === 'profile' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'
             }`}
           >
@@ -290,7 +270,7 @@ export default function Navbar({
           {authenticatedUser?.role === 'admin' && (
             <button
               onClick={() => handleNavClick('admin')}
-              className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 ${
+              className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
                 activeTab === 'admin' ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'
               }`}
             >
@@ -307,7 +287,7 @@ export default function Navbar({
                   <div>
                     <div className="text-xs font-bold text-stone-800">{authenticatedUser?.name || 'User'}</div>
                     <div className="text-[10px] text-emerald-800 font-bold">
-                      {authenticatedUser?.organization || authenticatedUser?.district || 'Active Profile'}
+                      {authenticatedUser?.district || 'Active Account'}
                     </div>
                   </div>
                   <button onClick={onLogout} className="text-xs font-bold text-red-600 hover:underline cursor-pointer">
@@ -320,7 +300,7 @@ export default function Navbar({
                   className="w-full bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
                 >
                   <Settings className="w-3.5 h-3.5" />
-                  <span>Edit Profile & Payment Details</span>
+                  <span>Edit Profile Picture & Contacts</span>
                 </button>
               </div>
             ) : (
