@@ -25,6 +25,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
   if (!isOpen) return null;
 
   const [mode, setMode] = useState('login'); // 'login' | 'register' | 'phone_otp'
+  const [registerStep, setRegisterStep] = useState('form'); // 'form' | 'otp'
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -207,20 +208,36 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
     }
   };
 
-  // 2. Request Email / Gmail OTP
-  const handleRequestEmailOtp = async () => {
-    if (!email || !email.includes('@')) {
-      setErrorMessage('Please enter a valid email address first to receive the verification code.');
-      return false;
-    }
+  // 2. Step 1 Submit: Validate details & dispatch Email OTP
+  const handleProceedToOtp = async (e) => {
+    if (e) e.preventDefault();
     setErrorMessage('');
+    setSuccessMessage('');
+
+    if (!name || name.trim().length < 2) {
+      setErrorMessage('Please enter your full legal name.');
+      return;
+    }
+    if (!phone || phone.trim().length < 8) {
+      setErrorMessage('Please enter a valid phone number for delivery coordination.');
+      return;
+    }
+    if (!email || !email.includes('@') || !email.includes('.')) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
+    if (!password || password.length < 8) {
+      setErrorMessage('Password must be at least 8 characters long and contain letters and numbers.');
+      return;
+    }
+
     setSendingEmailOtp(true);
 
     try {
       const res = await fetch('/api/auth/email-otp-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email: email.trim().toLowerCase() })
       });
 
       const data = await res.json();
@@ -229,35 +246,34 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
       }
 
       setEmailOtpSent(true);
+      setRegisterStep('otp'); // Immediately transition to dedicated OTP page!
+
       if (data.testOtp) {
         setEmailOtpNotice(data.testOtp);
         setEmailOtp(data.testOtp);
-        setSuccessMessage(`Verification code ${data.testOtp} generated and auto-filled below! Click Complete Registration to finish.`);
+        setSuccessMessage(
+          data.emailDispatchedViaSmtp
+            ? `Verification code dispatched to ${email}! Enter the 6-digit code below to finish.`
+            : `Verification code generated for ${email}! Code auto-filled below. Click "Verify & Complete Registration".`
+        );
       } else {
-        setSuccessMessage(`6-digit verification code sent to ${email}. Please enter the code below to complete registration.`);
+        setSuccessMessage(`Verification code sent to ${email}! Please check your email inbox.`);
       }
-      return true;
     } catch (err) {
       setErrorMessage(err.message);
-      return false;
     } finally {
       setSendingEmailOtp(false);
     }
   };
 
-  // 3. Email/Password Register (Mandatory OTP Verification)
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  // 3. Step 2 Submit: Verify Email OTP & Finalize Registration
+  const handleVerifyEmailAndRegister = async (e) => {
+    if (e) e.preventDefault();
     setErrorMessage('');
-
-    if (!emailOtpSent) {
-      const sent = await handleRequestEmailOtp();
-      if (!sent) return;
-      return;
-    }
+    setSuccessMessage('');
 
     if (!emailOtp || emailOtp.trim().length < 6) {
-      setErrorMessage('Please enter the 6-digit verification code to verify account ownership.');
+      setErrorMessage('Please enter the 6-digit verification code.');
       return;
     }
 
@@ -268,12 +284,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
-          email,
-          phone,
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim(),
           password,
           role,
-          organization: organization || (role === 'farmer' ? `${district} Organic Union` : 'Enterprise Buyer Corp'),
+          organization: organization ? organization.trim() : (role === 'farmer' ? `${district} Organic Union` : 'Enterprise Buyer Corp'),
           district,
           address: address || `${district}, Mizoram`,
           emailOtp: emailOtp.trim()
@@ -284,9 +300,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
       if (!res.ok) {
         if (data.requiresOtp && data.testOtp) {
           setEmailOtpSent(true);
+          setRegisterStep('otp');
           setEmailOtpNotice(data.testOtp);
           setEmailOtp(data.testOtp);
-          setSuccessMessage(`Verification code ${data.testOtp} auto-filled! Click Complete Registration to finish.`);
+          setSuccessMessage(`Verification code ${data.testOtp} auto-filled! Click "Verify & Complete Registration" to finish.`);
           return;
         }
         throw new Error(data.error || 'Registration failed.');
@@ -297,11 +314,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
         localStorage.setItem('zh_user', JSON.stringify(data.user));
       }
 
-      setSuccessMessage('Account created and verified successfully!');
+      setSuccessMessage('Account created and email verified successfully!');
       setTimeout(() => {
         onAuthSuccess(data.user, data.token);
         onClose();
-      }, 800);
+      }, 700);
     } catch (err) {
       setErrorMessage(err.message);
     } finally {
@@ -420,7 +437,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
               <span>Sign In</span>
             </button>
             <button
-              onClick={() => { setMode('register'); setErrorMessage(''); setSuccessMessage(''); }}
+              onClick={() => { setMode('register'); setRegisterStep('form'); setErrorMessage(''); setSuccessMessage(''); }}
               className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${
                 mode === 'register' ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-emerald-200 hover:text-white'
               }`}
@@ -441,8 +458,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
 
         {/* Feedback Alerts */}
         {errorMessage && (
-          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700">
-            {errorMessage}
+          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 flex flex-wrap items-center justify-between gap-2">
+            <span>{errorMessage}</span>
+            {errorMessage.toLowerCase().includes('already registered') && (
+              <button
+                type="button"
+                onClick={() => { setMode('login'); setErrorMessage(''); setSuccessMessage(''); }}
+                className="bg-emerald-800 hover:bg-emerald-900 text-white font-bold px-3 py-1 rounded-lg text-[11px] transition shadow-xs cursor-pointer shrink-0"
+              >
+                Switch to Sign In ➜
+              </button>
+            )}
           </div>
         )}
         {successMessage && (
@@ -522,8 +548,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
           </form>
         )}
 
-        {/* 2. CREATE ACCOUNT TAB */}
-        {mode === 'register' && (
+        {/* 2. CREATE ACCOUNT TAB - STEP 1: Details Form */}
+        {mode === 'register' && registerStep === 'form' && (
           <div className="p-6 space-y-4">
             
             {/* Role Selector */}
@@ -569,189 +595,185 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, districts = 
               <span className="bg-white px-3 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">or register with email form</span>
             </div>
 
-            <form onSubmit={handleRegister} className="space-y-3.5">
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">Full Legal Name</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Lalthanmawia"
-                  className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">Phone Number (SMS OTP)</label>
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 98620 12345"
-                  className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[11px] font-bold text-slate-700">Gmail / Business Email</label>
-                  {email && email.includes('@') && !emailOtpSent && (
-                    <button
-                      type="button"
-                      onClick={handleRequestEmailOtp}
-                      disabled={sendingEmailOtp}
-                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 underline cursor-pointer disabled:opacity-50"
-                    >
-                      {sendingEmailOtp ? 'Sending code...' : 'Send OTP'}
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (emailOtpSent) {
-                      setEmailOtpSent(false);
-                      setEmailOtp('');
-                    }
-                  }}
-                  placeholder="name@gmail.com"
-                  className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
-                {email && email.toLowerCase().includes('@gmail.com') && (
-                  <p className="mt-1 text-[10px] text-emerald-800 font-medium">
-                    ⚡ Tip: You can also click <b>Sign Up with Google</b> above for instant 1-click verification.
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">Mizoram District / Region</label>
-                <select
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                >
-                  {districts.map((d) => (
-                    <option key={d} value={d}>{d} District</option>
-                  ))}
-                  <option value="National / Other">National / Other</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                {role === 'farmer' ? 'FPO / Cooperative / Farm Name' : 'Company / Buying House Legal Name'}
-              </label>
-              <input
-                type="text"
-                value={organization}
-                onChange={(e) => setOrganization(e.target.value)}
-                placeholder={role === 'farmer' ? 'e.g. Champhai High-Altitude Organic Union' : 'e.g. Spices India Wholesale Ltd'}
-                className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">Password (Min. 8 characters with numbers & letters)</label>
-              <div className="relative flex items-center">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Create secure password"
-                  className="w-full px-3 pr-10 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 text-slate-400 hover:text-slate-600"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Mandatory 6-Digit Email Verification Box */}
-            {emailOtpSent && (
-              <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-2xl space-y-2 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950">
-                    <Mail className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Verification Code for {email}</span>
-                  </div>
-                  {emailOtpNotice && (
-                    <button
-                      type="button"
-                      onClick={() => setEmailOtp(emailOtpNotice)}
-                      className="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded text-xs font-mono font-bold cursor-pointer transition flex items-center gap-1"
-                    >
-                      <span>Code: {emailOtpNotice}</span>
-                      <span className="text-[10px] text-emerald-700 underline font-normal">(Auto-fill)</span>
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
+            <form onSubmit={handleProceedToOtp} className="space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Full Legal Name</label>
                   <input
                     type="text"
                     required
-                    maxLength={6}
-                    value={emailOtp}
-                    onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
-                    placeholder="Enter 6-digit OTP"
-                    className="flex-1 px-3 py-2 text-sm font-mono font-bold text-center tracking-widest bg-white border border-amber-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Lalthanmawia"
+                    className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
-                  {emailOtpNotice && (
-                    <button
-                      type="button"
-                      onClick={() => setEmailOtp(emailOtpNotice)}
-                      className="text-xs font-bold bg-amber-400 hover:bg-amber-500 text-slate-950 py-2 px-3 rounded-xl transition cursor-pointer"
-                    >
-                      Fill Code
-                    </button>
-                  )}
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Phone Number (SMS / WhatsApp)</label>
+                  <input
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+91 98620 12345"
+                    className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Gmail / Business Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@gmail.com"
+                    className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Mizoram District / Region</label>
+                  <select
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  >
+                    {districts.map((d) => (
+                      <option key={d} value={d}>{d} District</option>
+                    ))}
+                    <option value="National / Other">National / Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  {role === 'farmer' ? 'FPO / Cooperative / Farm Name' : 'Company / Buying House Legal Name'}
+                </label>
+                <input
+                  type="text"
+                  value={organization}
+                  onChange={(e) => setOrganization(e.target.value)}
+                  placeholder={role === 'farmer' ? 'e.g. Champhai High-Altitude Organic Union' : 'e.g. Spices India Wholesale Ltd'}
+                  className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Password (Min. 8 characters with numbers & letters)</label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Create secure password"
+                    className="w-full px-3 pr-10 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  />
                   <button
                     type="button"
-                    onClick={handleRequestEmailOtp}
-                    disabled={sendingEmailOtp}
-                    className="text-xs font-bold text-slate-700 hover:text-slate-900 py-2 px-3 border border-slate-300 rounded-xl bg-white cursor-pointer disabled:opacity-50"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
-                    {sendingEmailOtp ? 'Sending...' : 'Resend'}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="text-[10px] text-amber-900 font-medium">
-                  {emailOtpNotice 
-                    ? `Code ${emailOtpNotice} generated! Click Fill Code or Complete Registration below.`
-                    : `Please check your email for the 6-digit code.`}
-                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={sendingEmailOtp}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3 rounded-xl text-xs sm:text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <span>{sendingEmailOtp ? 'Dispatching Verification Code...' : 'Continue to Email Verification'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* 2. CREATE ACCOUNT TAB - STEP 2: Dedicated OTP Enter Screen */}
+        {mode === 'register' && registerStep === 'otp' && (
+          <div className="p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 bg-emerald-100 text-emerald-800 rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-xs">
+                ✉️
+              </div>
+              <h3 className="text-lg font-extrabold text-slate-900">Verify Your Email Address</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Enter the 6-digit verification code sent to <strong className="text-slate-900 font-bold">{email}</strong>.
+              </p>
+            </div>
+
+            {/* Test Mode / Immediate Code auto-fill banner */}
+            {emailOtpNotice && (
+              <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-2xl flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🔑</span>
+                  <div>
+                    <span className="font-extrabold text-emerald-950 block">Verification Code: <span className="font-mono text-sm tracking-widest text-emerald-900 font-bold">{emailOtpNotice}</span></span>
+                    <span className="text-[10px] text-emerald-700">Code issued for this account. Click Auto-Fill or check your inbox.</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEmailOtp(emailOtpNotice)}
+                  className="bg-emerald-800 hover:bg-emerald-900 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs shrink-0"
+                >
+                  Auto-Fill Code
+                </button>
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading || sendingEmailOtp}
-              className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3 rounded-xl text-xs sm:text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <span>
-                {loading
-                  ? 'Verifying & Registering...'
-                  : !emailOtpSent
-                  ? 'Send Verification Code & Continue'
-                  : 'Verify Gmail & Complete Registration'}
-              </span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
+            <form onSubmit={handleVerifyEmailAndRegister} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 text-center mb-2">
+                  Enter 6-Digit Code
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  maxLength={6}
+                  value={emailOtp}
+                  onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  className="w-full max-w-xs mx-auto block py-3 px-4 text-center text-2xl font-mono font-extrabold tracking-[0.4em] bg-slate-50 border-2 border-emerald-600 rounded-2xl shadow-inner focus:ring-4 focus:ring-emerald-500/20 focus:outline-hidden"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || emailOtp.length < 6}
+                className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold py-3.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <span>{loading ? 'Verifying & Creating Account...' : 'Verify Email & Complete Registration'}</span>
+                <Check className="w-4 h-4 text-amber-400" />
+              </button>
+
+              <div className="flex items-center justify-between text-xs pt-2">
+                <button
+                  type="button"
+                  onClick={() => setRegisterStep('form')}
+                  className="text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
+                >
+                  ← Edit details / change email
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleProceedToOtp}
+                  disabled={sendingEmailOtp}
+                  className="text-emerald-700 hover:text-emerald-900 font-bold underline cursor-pointer disabled:opacity-50"
+                >
+                  {sendingEmailOtp ? 'Sending...' : 'Resend Code'}
+                </button>
+              </div>
+            </form>
           </div>
         )}
 

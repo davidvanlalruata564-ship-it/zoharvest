@@ -334,10 +334,10 @@ const authLimiter = rateLimit({
   message: { error: 'Too many authentication attempts, please try again after 10 minutes.' }
 });
 
-// Stricter rate limiter for Phone OTP dispatch to prevent SMS toll fraud / spamming
+// Stricter rate limiter for Phone/Email OTP dispatch
 const otpRequestLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 6,
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many OTP requests from this connection. Please wait 10 minutes before requesting another code.' }
@@ -951,7 +951,10 @@ app.post('/api/auth/email-otp-request', async (req, res) => {
 
   const existingEmail = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
   if (existingEmail) {
-    return res.status(409).json({ error: 'An account with this email address already exists. Please sign in.' });
+    return res.status(409).json({ 
+      error: `An account with ${cleanEmail} is already registered. Please sign in or use Google.`,
+      alreadyRegistered: true 
+    });
   }
 
   const code = String(Math.floor(100000 + Math.random() * 900000));
