@@ -59,9 +59,6 @@ export default function ProducerDashboard({
     !Array.isArray(p.images) || p.images.length === 0 || p.images.every(i => !i || i.trim() === '')
   );
 
-  const grossEarnings = currentUser?.grossEarnings || 0;
-  const activeEscrow = currentUser?.activeEscrow || 0;
-  const pendingRFQs = sellerRFQs.filter(r => r.status === 'Pending' || r.status === 'Counter-Offered').length;
 
   // Inline product editing states
   const [editingProdId, setEditingProdId] = useState(null);
@@ -173,61 +170,6 @@ export default function ProducerDashboard({
         </div>
       )}
 
-      {/* Real-time Gross Earnings & Payout Tracker Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        
-        {/* Settled Earnings */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <span>{t.grossEarnings}</span>
-            <div className="w-8 h-8 rounded-xl bg-green-50 text-green-700 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-sans">
-            ₹{grossEarnings.toLocaleString('en-IN')}
-          </div>
-          <p className="text-[11px] text-green-700 font-semibold flex items-center gap-1">
-            <span>Directly settled to {currentUser?.bankAccount?.bankName || 'Mizoram Rural Bank'}</span>
-          </p>
-        </div>
-
-        {/* Active Escrow Guarantee */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <span>{t.activeEscrowBalance}</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-amber-600 font-sans">
-            ₹{activeEscrow.toLocaleString('en-IN')}
-          </div>
-          <p className="text-[11px] text-amber-800 font-medium">
-            Active direct orders awaiting delivery confirmation.
-          </p>
-        </div>
-
-        {/* Pending Inbound RFQs */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
-            <span>Inbound RFQ Pipeline</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center">
-              <FileText className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-900 font-sans">
-            {pendingRFQs} Active
-          </div>
-          <button
-            onClick={() => onNavigateTab('rfqs')}
-            className="text-[11px] text-emerald-700 font-bold hover:underline block"
-          >
-            Review bids & submit counter-offers ➜
-          </button>
-        </div>
-
-      </div>
 
       {/* MY COMMODITIES & INVENTORY MANAGEMENT SECTION */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
