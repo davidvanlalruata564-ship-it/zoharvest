@@ -73,7 +73,7 @@ export default function HeroBanner({ t, searchTerm, setSearchTerm, onNewListingC
               </div>
               <div className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-amber-400" />
-                <span>100% Escrow Protected</span>
+                <span>Escrow Protected Payments</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-amber-400" />
@@ -120,26 +120,6 @@ export default function HeroBanner({ t, searchTerm, setSearchTerm, onNewListingC
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Bottom Metrics Bar */}
-        <div className="mt-8 pt-5 border-t border-emerald-800/60 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-          <div className="p-2.5 rounded-xl bg-emerald-900/30 border border-emerald-800/50">
-            <div className="text-lg sm:text-xl font-extrabold text-amber-400">0%</div>
-            <div className="text-[11px] text-emerald-200/80 font-medium">Platform Take from Farmers</div>
-          </div>
-          <div className="p-2.5 rounded-xl bg-emerald-900/30 border border-emerald-800/50">
-            <div className="text-lg sm:text-xl font-extrabold text-white">11 Districts</div>
-            <div className="text-[11px] text-emerald-200/80 font-medium">Local Grower Collectives</div>
-          </div>
-          <div className="p-2.5 rounded-xl bg-emerald-900/30 border border-emerald-800/50">
-            <div className="text-lg sm:text-xl font-extrabold text-emerald-300">100% Safe</div>
-            <div className="text-[11px] text-emerald-200/80 font-medium">Escrow Protected Payments</div>
-          </div>
-          <div className="p-2.5 rounded-xl bg-emerald-900/30 border border-emerald-800/50">
-            <div className="text-lg sm:text-xl font-extrabold text-amber-300">GI Certified</div>
-            <div className="text-[11px] text-emerald-200/80 font-medium">Authentic Regional Quality</div>
           </div>
         </div>
 
