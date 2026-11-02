@@ -161,12 +161,22 @@ export default function MarketplaceCatalog({
                   className="relative h-48 w-full overflow-hidden bg-stone-100 cursor-pointer" 
                   onClick={() => onOpenProductDetail(product)}
                 >
-                  <img
-                    src={product.images[0]}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500"
-                    loading="lazy"
-                  />
+                  {product.images && product.images.length > 0 && product.images[0] ? (
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-900 flex flex-col items-center justify-center p-4 text-center">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-800/80 border border-emerald-500/30 text-amber-300 flex items-center justify-center text-2xl mb-2 font-bold shadow-md">
+                        🌾
+                      </div>
+                      <span className="text-xs font-bold text-white line-clamp-1">{product.name}</span>
+                      <span className="text-[10px] text-emerald-300/80 uppercase font-bold tracking-wider mt-0.5">Verified Commodity Listing</span>
+                    </div>
+                  )}
                   
                   {/* Badges Overlay */}
                   <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 items-start">

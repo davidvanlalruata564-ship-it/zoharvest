@@ -13,12 +13,14 @@ import {
   AlertCircle,
   Settings,
   Edit2,
+  FileEdit,
   Trash2,
   Save,
   X,
   Package,
   Layers,
-  Sparkles
+  Sparkles,
+  Image as ImageIcon
 } from 'lucide-react';
 
 export default function ProducerDashboard({
@@ -27,6 +29,7 @@ export default function ProducerDashboard({
   orders = [],
   rfqs = [],
   onOpenNewListing,
+  onEditProduct,
   onOpenProfile,
   onUpdateProduct,
   onDeleteProduct,
@@ -46,6 +49,13 @@ export default function ProducerDashboard({
   const myProducts = products.filter(p => 
     (currentUser?.id && p.sellerId === currentUser.id) ||
     (!currentUser?.id && (p.sellerId === 'user-farmer-1' || p.fpoName?.includes('Champhai')))
+  );
+
+  const photoListings = myProducts.filter(p => 
+    Array.isArray(p.images) && p.images.length > 0 && p.images.some(i => i && i.trim() !== '')
+  );
+  const textListings = myProducts.filter(p => 
+    !Array.isArray(p.images) || p.images.length === 0 || p.images.every(i => !i || i.trim() === '')
   );
 
   const grossEarnings = currentUser?.grossEarnings || 0;
@@ -225,11 +235,88 @@ export default function ProducerDashboard({
 
           <button
             onClick={onOpenNewListing}
-            className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-xs"
+            className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-xs cursor-pointer"
           >
             <PlusCircle className="w-4 h-4 text-amber-300" />
             <span>Add New Commodity</span>
           </button>
+        </div>
+
+        {/* Farmer Post Quota Status Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm">
+                  <ImageIcon className="w-4 h-4 text-emerald-700" />
+                </div>
+                <div>
+                  <div className="text-xs font-extrabold text-slate-900">Listings with Photos</div>
+                  <div className="text-[10px] text-slate-500">Max 10 per farmer account</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-sm font-black text-emerald-950">{photoListings.length}</span>
+                <span className="text-xs font-semibold text-slate-400">/10</span>
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-300 ${photoListings.length >= 10 ? 'bg-amber-500' : 'bg-emerald-600'}`}
+                style={{ width: `${Math.min(100, (photoListings.length / 10) * 100)}%` }}
+              />
+            </div>
+            <div className="flex justify-between items-center text-[10px] text-slate-500">
+              <span className={photoListings.length >= 10 ? 'font-bold text-amber-700' : 'font-medium'}>
+                {photoListings.length >= 10 ? '⚠️ Photo limit reached (10/10)' : `${10 - photoListings.length} photo slots available`}
+              </span>
+              {photoListings.length >= 10 ? (
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                  Delete post to free slot
+                </span>
+              ) : (
+                <span className="text-emerald-700 font-semibold">Active</span>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm">
+                  <Layers className="w-4 h-4 text-emerald-700" />
+                </div>
+                <div>
+                  <div className="text-xs font-extrabold text-slate-900">Text-Only Listings</div>
+                  <div className="text-[10px] text-slate-500">Max 30 per farmer account</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-sm font-black text-emerald-950">{textListings.length}</span>
+                <span className="text-xs font-semibold text-slate-400">/30</span>
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-300 ${textListings.length >= 30 ? 'bg-red-500' : 'bg-emerald-600'}`}
+                style={{ width: `${Math.min(100, (textListings.length / 30) * 100)}%` }}
+              />
+            </div>
+            <div className="flex justify-between items-center text-[10px] text-slate-500">
+              <span className={textListings.length >= 30 ? 'font-bold text-red-700' : 'font-medium'}>
+                {textListings.length >= 30 ? '⚠️ Text limit reached (30/30)' : `${30 - textListings.length} text slots available`}
+              </span>
+              {textListings.length >= 30 ? (
+                <span className="text-[10px] font-bold text-red-800 bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
+                  Delete post to free slot
+                </span>
+              ) : (
+                <span className="text-emerald-700 font-semibold">Active</span>
+              )}
+            </div>
+          </div>
         </div>
 
         {myProducts.length === 0 ? (
@@ -265,16 +352,30 @@ export default function ProducerDashboard({
                     <tr key={prod.id} className="hover:bg-slate-50 transition">
                       <td className="py-3.5 pr-4">
                         <div className="flex items-center gap-3">
-                          <img 
-                            src={prod.images?.[0] || 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=150&q=80'} 
-                            alt={prod.name}
-                            className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
-                          />
+                          {prod.images && prod.images.length > 0 && prod.images[0] ? (
+                            <img 
+                              src={prod.images[0]} 
+                              alt={prod.name}
+                              className="w-11 h-11 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs"
+                            />
+                          ) : (
+                            <div className="w-11 h-11 rounded-xl bg-slate-100 border border-slate-200 flex flex-col items-center justify-center text-slate-500 shrink-0 font-mono text-[9px] font-bold">
+                              <Layers className="w-4 h-4 text-slate-400 mb-0.5" />
+                              <span>TEXT</span>
+                            </div>
+                          )}
                           <div>
                             <div className="font-extrabold text-slate-900 line-clamp-1 max-w-[220px]" title={prod.name}>
                               {prod.name}
                             </div>
-                            <div className="text-[11px] text-slate-400 capitalize">{prod.category}</div>
+                            <div className="text-[11px] text-slate-400 capitalize flex items-center gap-1.5 mt-0.5">
+                              <span>{prod.category}</span>
+                              {prod.images && prod.images.length > 0 && prod.images[0] ? (
+                                <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1 rounded font-bold">Photo</span>
+                              ) : (
+                                <span className="text-[10px] text-slate-500 bg-slate-100 px-1 rounded font-bold">Text Only</span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -370,20 +471,27 @@ export default function ProducerDashboard({
                         ) : (
                           <div className="flex items-center justify-end gap-1">
                             <button
+                              onClick={() => onEditProduct && onEditProduct(prod)}
+                              className="p-1.5 rounded-lg hover:bg-emerald-50 text-slate-600 hover:text-emerald-800 transition cursor-pointer"
+                              title="Edit Full Listing (Change photos, specifications, details)"
+                            >
+                              <FileEdit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
                               onClick={() => startEditProduct(prod)}
-                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-emerald-800 transition"
+                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 hover:text-emerald-800 transition cursor-pointer"
                               title="Quick Edit Price & Stock"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => {
-                                if (window.confirm(`Are you sure you want to delete listing "${prod.name}"?`)) {
+                                if (window.confirm(`Are you sure you want to delete listing "${prod.name}"?\n\nDeleting this listing will immediately release 1 quota slot back to your account.`)) {
                                   onDeleteProduct(prod.id);
                                 }
                               }}
-                              className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition"
-                              title="Delete Listing"
+                              className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition cursor-pointer"
+                              title="Delete Listing (Releases 1 slot)"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>

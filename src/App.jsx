@@ -59,6 +59,7 @@ export default function App() {
   const [escrowModalOrder, setEscrowModalOrder] = useState(null);
   const [poModalOrder, setPoModalOrder] = useState(null);
   const [isNewListingOpen, setIsNewListingOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -378,7 +379,7 @@ export default function App() {
   const handlePublishNewProduct = async (productData) => {
     if (!authenticatedUser) {
       setIsAuthOpen(true);
-      return;
+      return { success: false, error: 'Authentication required. Please sign in.' };
     }
     try {
       const res = await fetch('/api/products', {
@@ -390,12 +391,14 @@ export default function App() {
         const created = await res.json();
         setProducts(prev => [created, ...prev]);
         setActiveTab('marketplace');
+        return { success: true, product: created };
       } else {
         const err = await res.json();
-        alert(err.error || 'Failed to list commodity');
+        return { success: false, error: err.error || 'Failed to list commodity' };
       }
     } catch (e) {
       console.error(e);
+      return { success: false, error: 'Network error or server unavailable' };
     }
   };
 
@@ -425,7 +428,7 @@ export default function App() {
   const handleUpdateProduct = async (productId, updatedFields) => {
     if (!authenticatedUser) {
       setIsAuthOpen(true);
-      return;
+      return { success: false, error: 'Authentication required. Please sign in.' };
     }
     try {
       const res = await fetch(`/api/products/${productId}`, {
@@ -436,12 +439,14 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setProducts(prev => prev.map(p => p.id === productId ? data.product : p));
+        return { success: true, product: data.product };
       } else {
         const err = await res.json();
-        alert(err.error || 'Failed to update product');
+        return { success: false, error: err.error || 'Failed to update product' };
       }
     } catch (e) {
       console.error(e);
+      return { success: false, error: 'Network error or server unavailable' };
     }
   };
 
@@ -692,7 +697,14 @@ export default function App() {
                   products={products}
                   orders={orders}
                   rfqs={rfqs}
-                  onOpenNewListing={() => setIsNewListingOpen(true)}
+                  onOpenNewListing={() => {
+                    setEditingProduct(null);
+                    setIsNewListingOpen(true);
+                  }}
+                  onEditProduct={(prod) => {
+                    setEditingProduct(prod);
+                    setIsNewListingOpen(true);
+                  }}
                   onOpenProfile={handleOpenProfile}
                   onUpdateProduct={handleUpdateProduct}
                   onDeleteProduct={handleDeleteProduct}
@@ -825,8 +837,14 @@ export default function App() {
       {isNewListingOpen && (
         <NewListingModal
           isOpen={isNewListingOpen}
-          onClose={() => setIsNewListingOpen(false)}
+          onClose={() => {
+            setIsNewListingOpen(false);
+            setEditingProduct(null);
+          }}
           onSubmitNewProduct={handlePublishNewProduct}
+          onUpdateProduct={handleUpdateProduct}
+          editingProduct={editingProduct}
+          products={products}
           districts={districts}
           categories={categories}
           currentUser={currentUser}

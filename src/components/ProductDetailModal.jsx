@@ -32,11 +32,21 @@ export default function ProductDetailModal({ product, onClose, onOpenRFQ, t, cur
           
           {/* Image & Producer Identity */}
           <div className="relative bg-slate-100 h-64 md:h-full min-h-[300px]">
-            <img
-              src={product.images[0]}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
+            {product.images && product.images.length > 0 && product.images[0] ? (
+              <img
+                src={product.images[0]}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full min-h-[300px] bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-900 flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-16 h-16 rounded-3xl bg-emerald-800/80 border border-emerald-500/30 text-amber-300 flex items-center justify-center text-3xl mb-3 font-bold shadow-lg">
+                  🌾
+                </div>
+                <h3 className="text-base font-extrabold text-white">{product.name}</h3>
+                <p className="text-xs text-emerald-300 mt-1 max-w-xs">Text-only verified producer harvest listing.</p>
+              </div>
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex flex-col justify-end p-6 text-white">
               <div className="flex items-center gap-2 mb-1">
                 {product.giTagged && (

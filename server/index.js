@@ -8,6 +8,8 @@ import jwt from 'jsonwebtoken';
 import validator from 'validator';
 import nodemailer from 'nodemailer';
 import path from 'path';
+import fs from 'fs';
+import sharp from 'sharp';
 import { fileURLToPath } from 'url';
 import {
   initialCategories,
@@ -22,6 +24,10 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, '..', 'dist');
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -286,12 +292,22 @@ app.use(
   })
 );
 
-// Payload size limit against DOS payload injection
-app.use(express.json({ limit: '100kb' }));
+// Payload size limit to support compressed image uploads
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+// Serve optimized uploaded produce images
+app.use('/uploads', express.static(uploadsDir, {
+  maxAge: '7d'
+}));
 
 // Recursive Input Sanitization Middleware (Anti-XSS & Prototype Pollution Defense)
 function sanitizeInput(data) {
   if (typeof data === 'string') {
+    // Preserve binary/base64 image data and local upload paths from string replacement
+    if (data.startsWith('data:image/') || data.startsWith('/uploads/')) {
+      return data;
+    }
     return data
       .replace(/\0/g, '')
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -407,8 +423,107 @@ function pushNotification({ type, recipientRole, recipientName, title, message }
 }
 
 // ----------------------
-// PRODUCTS API
+// PRODUCTS API & LISTING QUOTAS
 // ----------------------
+
+// Helper: Convert and compress produce images using sharp to a compact WebP format
+async function optimizeProduceImage(imageData) {
+  try {
+    if (!imageData || typeof imageData !== 'string') return null;
+
+    // External URL or already uploaded file URL
+    if (imageData.startsWith('/uploads/') || imageData.startsWith('http://') || imageData.startsWith('https://')) {
+      return imageData;
+    }
+
+    // Must be base64 string or data URL
+    let base64Data = imageData;
+    if (imageData.includes(';base64,')) {
+      base64Data = imageData.split(';base64,')[1];
+    }
+
+    const inputBuffer = Buffer.from(base64Data, 'base64');
+    if (!inputBuffer || inputBuffer.length === 0) return null;
+
+    // Auto-orient by EXIF, max width 1000px, max height 1000px, 80% WebP quality
+    const optimizedBuffer = await sharp(inputBuffer)
+      .rotate()
+      .resize({
+        width: 1000,
+        height: 1000,
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .webp({ quality: 80, effort: 4 })
+      .toBuffer();
+
+    const filename = `produce-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.webp`;
+    const filePath = path.join(uploadsDir, filename);
+    await fs.promises.writeFile(filePath, optimizedBuffer);
+
+    return `/uploads/${filename}`;
+  } catch (err) {
+    console.error('[IMAGE OPTIMIZER] Sharp processing error:', err.message);
+    return null;
+  }
+}
+
+// Helper: Get user's active listing quota stats
+function getUserListingStats(userId) {
+  const userProducts = products.filter(p => p.sellerId === userId);
+
+  const withImage = userProducts.filter(p => 
+    Array.isArray(p.images) && p.images.length > 0 && p.images.some(img => img && typeof img === 'string' && img.trim() !== '')
+  );
+
+  const withoutImage = userProducts.filter(p => 
+    !Array.isArray(p.images) || p.images.length === 0 || p.images.every(img => !img || typeof img !== 'string' || img.trim() === '')
+  );
+
+  return {
+    withImageCount: withImage.length,
+    withoutImageCount: withoutImage.length,
+    maxWithImage: 10,
+    maxWithoutImage: 30,
+    remainingWithImage: Math.max(0, 10 - withImage.length),
+    remainingWithoutImage: Math.max(0, 30 - withoutImage.length),
+    canPostWithImage: withImage.length < 10,
+    canPostWithoutImage: withoutImage.length < 30
+  };
+}
+
+// User Listing Quota API
+app.get('/api/users/listing-quota', authenticateToken, (req, res) => {
+  const stats = getUserListingStats(req.user.id);
+  res.json({
+    success: true,
+    stats
+  });
+});
+
+// Image Upload API (Sharp optimized)
+app.post('/api/upload-image', authenticateToken, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) {
+      return res.status(400).json({ error: 'No image data provided for upload.' });
+    }
+
+    const imageUrl = await optimizeProduceImage(image);
+    if (!imageUrl) {
+      return res.status(400).json({ error: 'Could not process or optimize image. Please select a valid JPG, PNG, or WebP image.' });
+    }
+
+    res.json({
+      success: true,
+      imageUrl
+    });
+  } catch (err) {
+    console.error('Upload image endpoint error:', err);
+    res.status(500).json({ error: 'Failed to process image on server.' });
+  }
+});
+
 app.get('/api/categories', (req, res) => {
   res.json({ categories: initialCategories, districts: initialDistricts });
 });
@@ -452,7 +567,7 @@ app.get('/api/products/:id', (req, res) => {
   res.json(product);
 });
 
-app.post('/api/products', authenticateToken, requireRole('farmer', 'admin'), (req, res) => {
+app.post('/api/products', authenticateToken, requireRole('farmer', 'admin'), async (req, res) => {
   const authUser = req.user;
 
   const {
@@ -481,6 +596,41 @@ app.post('/api/products', authenticateToken, requireRole('farmer', 'admin'), (re
     return res.status(400).json({ error: 'Missing mandatory fields: Commodity name, price, and MOQ are required.' });
   }
 
+  // Optimize and process images array
+  let processedImages = [];
+  if (Array.isArray(images) && images.length > 0) {
+    for (const img of images) {
+      if (img && typeof img === 'string' && img.trim() !== '') {
+        const optimized = await optimizeProduceImage(img);
+        if (optimized) {
+          processedImages.push(optimized);
+        }
+      }
+    }
+  }
+
+  const hasImage = processedImages.length > 0;
+  const stats = getUserListingStats(authUser.id);
+
+  // Enforce Posting Limits
+  if (hasImage && stats.withImageCount >= 10) {
+    return res.status(403).json({
+      error: `Posting limit reached: You have reached the maximum allowed limit of 10 listings with photos (${stats.withImageCount}/10 used). You can delete an existing photo listing to free up a slot, or publish this listing without a photo (up to 30 text listings allowed).`,
+      limitType: 'photo_limit_reached',
+      current: stats.withImageCount,
+      max: 10
+    });
+  }
+
+  if (!hasImage && stats.withoutImageCount >= 30) {
+    return res.status(403).json({
+      error: `Posting limit reached: You have reached the maximum allowed limit of 30 listings without photos (${stats.withoutImageCount}/30 used). Please delete an older listing to create a new one.`,
+      limitType: 'text_limit_reached',
+      current: stats.withoutImageCount,
+      max: 30
+    });
+  }
+
   const newProduct = {
     id: `prod-${Date.now()}`,
     name,
@@ -501,9 +651,7 @@ app.post('/api/products', authenticateToken, requireRole('farmer', 'admin'), (re
     availableStock: Number(availableStock) || Number(minOrderQty) * 10,
     isAdvanceHarvest: !!isAdvanceHarvest,
     harvestDate: harvestDate || 'In Stock',
-    images: images && images.length ? images : [
-      'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=800&q=80'
-    ],
+    images: processedImages,
     description: description || 'High quality harvest from Mizoram organic hills.',
     descriptionMizo: descriptionMizo || 'Mizoram thar chhuah tha tak.',
     certifications: certifications || ['FPO Verification Passed'],
@@ -511,8 +659,8 @@ app.post('/api/products', authenticateToken, requireRole('farmer', 'admin'), (re
       { minQty: Number(minOrderQty), maxQty: Number(minOrderQty) * 4, price: Number(pricePerUnit) },
       { minQty: Number(minOrderQty) * 4 + 1, maxQty: Number(minOrderQty) * 20, price: Math.round(Number(pricePerUnit) * 0.94) }
     ],
-    packaging: 'Standard export packaging',
-    shelfLife: '12 Months',
+    packaging: req.body.packaging || 'Standard export packaging',
+    shelfLife: req.body.shelfLife || '12 Months',
     moderationStatus: 'approved',
     quarantineReason: null
   };
@@ -530,7 +678,7 @@ app.post('/api/products', authenticateToken, requireRole('farmer', 'admin'), (re
 });
 
 // Update existing product listing (Authenticated: Seller Owner or Admin)
-app.put('/api/products/:id', authenticateToken, requireRole('farmer', 'admin'), (req, res) => {
+app.put('/api/products/:id', authenticateToken, requireRole('farmer', 'admin'), async (req, res) => {
   const product = products.find(p => p.id === req.params.id);
   if (!product) return res.status(404).json({ error: 'Product not found' });
 
@@ -543,6 +691,7 @@ app.put('/api/products/:id', authenticateToken, requireRole('farmer', 'admin'), 
     name,
     nameMizo,
     category,
+    district,
     grade,
     pricePerUnit,
     marketPriceComparison,
@@ -551,14 +700,53 @@ app.put('/api/products/:id', authenticateToken, requireRole('farmer', 'admin'), 
     isAdvanceHarvest,
     harvestDate,
     description,
+    descriptionMizo,
+    packaging,
     isOrganic,
     giTagged,
-    unit
+    unit,
+    images
   } = req.body;
+
+  // If images are being updated, check quota transitions
+  if (images !== undefined) {
+    let processedImages = [];
+    if (Array.isArray(images) && images.length > 0) {
+      for (const img of images) {
+        if (img && typeof img === 'string' && img.trim() !== '') {
+          const optimized = await optimizeProduceImage(img);
+          if (optimized) processedImages.push(optimized);
+        }
+      }
+    }
+
+    const oldHadImage = Array.isArray(product.images) && product.images.length > 0 && product.images.some(i => i && i.trim() !== '');
+    const newHasImage = processedImages.length > 0;
+    const stats = getUserListingStats(product.sellerId);
+
+    // Switching from without-image to with-image: check 10 limit
+    if (!oldHadImage && newHasImage && stats.withImageCount >= 10) {
+      return res.status(403).json({
+        error: `Cannot add photo: You have already reached your limit of 10 listings with photos (${stats.withImageCount}/10 used). Delete another photo listing first, or keep this listing text-only.`,
+        limitType: 'photo_limit_reached'
+      });
+    }
+
+    // Switching from with-image to without-image: check 30 limit
+    if (oldHadImage && !newHasImage && stats.withoutImageCount >= 30) {
+      return res.status(403).json({
+        error: `Cannot remove photo: You have already reached your limit of 30 listings without photos (${stats.withoutImageCount}/30 used). Delete another listing first.`,
+        limitType: 'text_limit_reached'
+      });
+    }
+
+    product.images = processedImages;
+  }
 
   if (name) product.name = name;
   if (nameMizo) product.nameMizo = nameMizo;
   if (category) product.category = category;
+  if (district) product.district = district;
   if (grade) product.grade = grade;
   if (pricePerUnit !== undefined) product.pricePerUnit = Number(pricePerUnit);
   if (marketPriceComparison !== undefined) product.marketPriceComparison = Number(marketPriceComparison);
@@ -567,11 +755,17 @@ app.put('/api/products/:id', authenticateToken, requireRole('farmer', 'admin'), 
   if (isAdvanceHarvest !== undefined) product.isAdvanceHarvest = !!isAdvanceHarvest;
   if (harvestDate) product.harvestDate = harvestDate;
   if (description) product.description = description;
+  if (descriptionMizo) product.descriptionMizo = descriptionMizo;
+  if (packaging) product.packaging = packaging;
   if (isOrganic !== undefined) product.isOrganic = !!isOrganic;
   if (giTagged !== undefined) product.giTagged = !!giTagged;
   if (unit) product.unit = unit;
 
-  res.json({ success: true, product });
+  res.json({
+    success: true,
+    product,
+    stats: getUserListingStats(product.sellerId)
+  });
 });
 
 // Delete product listing (Authenticated: Seller Owner or Admin)
@@ -584,8 +778,15 @@ app.delete('/api/products/:id', authenticateToken, requireRole('farmer', 'admin'
     return res.status(403).json({ error: 'Unauthorized: You can only delete your own listings.' });
   }
 
+  const sellerId = product.sellerId;
   products.splice(index, 1);
-  res.json({ success: true, message: 'Product listing deleted successfully.' });
+  const stats = getUserListingStats(sellerId);
+
+  res.json({
+    success: true,
+    message: 'Product listing deleted successfully. Quota slot released.',
+    stats
+  });
 });
 
 // Admin Quarantine or Approve Product Listing
