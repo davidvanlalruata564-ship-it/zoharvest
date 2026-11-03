@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 
 import { compressImage, formatBytes } from '../utils/imageCompressor';
+import { formatWhatsAppNumber, getWhatsAppUrl, formatDisplayPhone } from '../utils/phoneUtils';
 import FollowersModal from './FollowersModal';
 
 function TwitterXIcon({ className = "w-3.5 h-3.5" }) {
@@ -301,7 +302,7 @@ export default function ProfilePage({
     }
   };
 
-  const cleanPhone = (profile?.whatsapp || profile?.phone || '').replace(/[^0-9]/g, '');
+  const cleanPhone = formatWhatsAppNumber(profile?.whatsapp || profile?.phone || '');
 
   if (loading) {
     return (
@@ -615,7 +616,7 @@ export default function ProfilePage({
                     <Phone className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                     <span className="text-slate-500 font-medium">Your Phone (Visible to Viewers):</span>
                     <span className="font-mono font-bold text-slate-900 truncate">
-                      {profile?.phone || 'Not set yet'}
+                      {profile?.phone ? formatDisplayPhone(profile.phone) : 'Not set yet'}
                     </span>
                   </div>
                   <button
@@ -673,7 +674,7 @@ export default function ProfilePage({
                     <div className="min-w-0">
                       <div className="text-[10px] uppercase font-bold text-slate-400">Phone Number</div>
                       <div className="text-sm font-black font-mono text-slate-900 tracking-wide">
-                        {profile.phone}
+                        {formatDisplayPhone(profile.phone)}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -704,13 +705,16 @@ export default function ProfilePage({
                 <div className="flex flex-wrap items-center gap-2">
                   {cleanPhone && (
                     <a
-                      href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hello ${profile?.name || profile?.organization}, I found your produce listing on ZOHARVEST and would like to contact you.`)}`}
+                      href={getWhatsAppUrl(
+                        profile?.whatsapp || profile?.phone,
+                        `Hello ${profile?.name || profile?.organization}, I found your produce listing on ZOHARVEST and would like to contact you.`
+                      )}
                       target="_blank"
                       rel="noreferrer"
                       className="flex-1 min-w-[140px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      <span>WhatsApp ({profile?.whatsapp || profile?.phone})</span>
+                      <span>WhatsApp ({formatDisplayPhone(profile?.whatsapp || profile?.phone)})</span>
                     </a>
                   )}
 

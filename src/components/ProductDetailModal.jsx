@@ -18,6 +18,7 @@ import {
   Edit3,
   Sparkles
 } from 'lucide-react';
+import { getWhatsAppUrl, formatDisplayPhone } from '../utils/phoneUtils';
 
 export default function ProductDetailModal({ 
   product, 
@@ -288,7 +289,7 @@ export default function ProductDetailModal({
                       <div className="flex items-center gap-2">
                         <Phone className="w-3.5 h-3.5 text-emerald-700" />
                         <span className="text-slate-500 font-medium">Phone:</span>
-                        <span className="font-mono font-bold text-slate-900">{product.phone}</span>
+                        <span className="font-mono font-bold text-slate-900">{formatDisplayPhone(product.phone)}</span>
                       </div>
                       <a
                         href={`tel:${product.phone}`}
@@ -303,13 +304,16 @@ export default function ProductDetailModal({
                   <div className="flex items-center gap-2">
                     {(product.whatsapp || product.phone) ? (
                       <a
-                        href={`https://wa.me/${(product.whatsapp || product.phone).replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${product.fpoName}, I found your listing "${product.name}" on ZOHARVEST. Is it available for dispatch?`)}`}
+                        href={getWhatsAppUrl(
+                          product.whatsapp || product.phone,
+                          `Hello ${product.fpoName || 'Seller'}, I found your listing "${product.name}" on ZOHARVEST. Is it available for dispatch?`
+                        )}
                         target="_blank"
                         rel="noreferrer"
                         className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <MessageCircle className="w-4 h-4" />
-                        <span>WhatsApp ({product.whatsapp || product.phone})</span>
+                        <span>WhatsApp ({formatDisplayPhone(product.whatsapp || product.phone)})</span>
                       </a>
                     ) : (
                       <button
