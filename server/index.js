@@ -1863,8 +1863,32 @@ app.get('/api/users', (req, res) => {
 
 // Profile customization (Authenticated user can customize their own profile, direct payment & bank details)
 app.put('/api/users/profile', authenticateToken, (req, res) => {
-  const user = users.find(u => u.id === req.user.id);
-  if (!user) return res.status(404).json({ error: 'User not found.' });
+  let user = users.find(u => u.id === req.user.id);
+  if (!user && req.user.email) {
+    user = users.find(u => u.email && u.email.toLowerCase() === req.user.email.toLowerCase());
+  }
+
+  // If user record wasn't in memory (e.g. server restarted with active JWT session),
+  // recover/re-hydrate user record so user is never blocked from saving profile!
+  if (!user) {
+    user = {
+      id: req.user.id,
+      name: req.body?.name || req.user.name || 'Member',
+      email: req.user.email || '',
+      phone: req.body?.phone || req.user.phone || '',
+      role: req.user.role || 'farmer',
+      organization: req.body?.organization || (req.user.name ? `${req.user.name}'s Farm` : 'Local Producer'),
+      district: req.body?.district || 'Champhai',
+      isVerified: true,
+      status: 'active',
+      authProvider: 'email_password_verified',
+      followers: [],
+      following: [],
+      blockedUsers: [],
+      createdAt: new Date().toISOString()
+    };
+    users.push(user);
+  }
 
   const {
     name,
@@ -1884,8 +1908,8 @@ app.put('/api/users/profile', authenticateToken, (req, res) => {
     twitter
   } = req.body;
 
-  if (name && name.trim()) user.name = name.trim();
-  if (phone && phone.trim()) user.phone = phone.trim();
+  if (name !== undefined && name.trim()) user.name = name.trim();
+  if (phone !== undefined) user.phone = phone.trim();
   if (whatsapp !== undefined) user.whatsapp = whatsapp.trim();
   if (gpayNumber !== undefined) user.gpayNumber = gpayNumber.trim();
   if (upiId !== undefined) user.upiId = upiId.trim();
@@ -1916,6 +1940,7 @@ app.put('/api/users/profile', authenticateToken, (req, res) => {
       if (user.whatsapp) p.whatsapp = user.whatsapp;
       if (user.gpayNumber) p.gpayNumber = user.gpayNumber;
       if (user.upiId) p.upiId = user.upiId;
+      if (user.organization) p.fpoName = user.organization;
     }
   });
 
@@ -2016,6 +2041,9 @@ app.get('/api/users/:id/public-profile', (req, res) => {
       gpayNumber: targetUser.gpayNumber || '',
       upiId: targetUser.upiId || '',
       bankAccount: targetUser.bankAccount || null,
+      instagram: targetUser.instagram || '',
+      website: targetUser.website || '',
+      twitter: targetUser.twitter || '',
       socialLinks: {
         instagram: targetUser.instagram || '',
         website: targetUser.website || '',
@@ -2044,7 +2072,29 @@ app.post('/api/users/:id/follow', authenticateToken, (req, res) => {
     return res.status(400).json({ error: 'You cannot follow your own profile.' });
   }
 
-  const currentUser = users.find(u => u.id === currentUserId);
+  let currentUser = users.find(u => u.id === currentUserId);
+  if (!currentUser && req.user.email) {
+    currentUser = users.find(u => u.email && u.email.toLowerCase() === req.user.email.toLowerCase());
+  }
+  if (!currentUser) {
+    currentUser = {
+      id: currentUserId,
+      name: req.user.name || 'Member',
+      email: req.user.email || '',
+      role: req.user.role || 'farmer',
+      organization: req.user.name ? `${req.user.name}'s Farm` : 'Local Producer',
+      district: 'Champhai',
+      isVerified: true,
+      status: 'active',
+      authProvider: 'email_password_verified',
+      followers: [],
+      following: [],
+      blockedUsers: [],
+      createdAt: new Date().toISOString()
+    };
+    users.push(currentUser);
+  }
+
   const targetUser = users.find(u => u.id === targetId || u.organization === targetId || u.name === targetId);
 
   if (!currentUser) return res.status(404).json({ error: 'Current user not found.' });

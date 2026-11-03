@@ -31,6 +31,14 @@ import {
 import { compressImage, formatBytes } from '../utils/imageCompressor';
 import FollowersModal from './FollowersModal';
 
+function TwitterXIcon({ className = "w-3.5 h-3.5" }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
 export default function ProfilePage({
   profileUserId,
   currentUser,
@@ -158,9 +166,13 @@ export default function ProfilePage({
                 gpayNumber: currentUser.gpayNumber || currentUser.phone || p.gpayNumber,
                 upiId: currentUser.upiId || p.upiId,
                 bankAccount: currentUser.bankAccount || p.bankAccount,
+                instagram: currentUser.instagram || p.instagram || p.socialLinks?.instagram || '',
+                website: currentUser.website || p.website || p.socialLinks?.website || '',
+                twitter: currentUser.twitter || p.twitter || p.socialLinks?.twitter || '',
                 socialLinks: {
-                  instagram: currentUser.instagram || p.socialLinks?.instagram || '',
-                  website: currentUser.website || p.socialLinks?.website || ''
+                  instagram: currentUser.instagram || p.socialLinks?.instagram || p.instagram || '',
+                  website: currentUser.website || p.socialLinks?.website || p.website || '',
+                  twitter: currentUser.twitter || p.socialLinks?.twitter || p.twitter || ''
                 }
               });
             } else {
@@ -551,96 +563,167 @@ export default function ProfilePage({
               {profile?.bio || 'Local grower and producer based in Mizoram.'}
             </p>
 
-            {/* Social Links Chips */}
-            {(profile?.socialLinks?.instagram || profile?.socialLinks?.website) && (
+            {/* Social Links Row (Always shown if present) */}
+            {Boolean(
+              (profile?.socialLinks?.instagram || profile?.instagram) || 
+              (profile?.socialLinks?.website || profile?.website) || 
+              (profile?.socialLinks?.twitter || profile?.twitter)
+            ) && (
               <div className="flex items-center gap-2 pt-1 flex-wrap">
-                {profile.socialLinks.instagram && (
+                {(profile?.socialLinks?.instagram || profile?.instagram) && (
                   <a
-                    href={`https://instagram.com/${profile.socialLinks.instagram.replace('@', '')}`}
+                    href={`https://instagram.com/${String(profile.socialLinks?.instagram || profile.instagram).replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-pink-50 text-pink-900 border border-pink-200 text-[11px] font-bold hover:bg-pink-100 transition"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-50 text-pink-900 border border-pink-200 text-xs font-bold hover:bg-pink-100 transition shadow-2xs"
                   >
-                    <Instagram className="w-3 h-3 text-pink-600" />
-                    <span>@{profile.socialLinks.instagram.replace('@', '')}</span>
+                    <Instagram className="w-3.5 h-3.5 text-pink-600 shrink-0" />
+                    <span>@{String(profile.socialLinks?.instagram || profile.instagram).replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')}</span>
                   </a>
                 )}
-                {profile.socialLinks.website && (
+                {(profile?.socialLinks?.website || profile?.website) && (
                   <a
-                    href={profile.socialLinks.website.startsWith('http') ? profile.socialLinks.website : `https://${profile.socialLinks.website}`}
+                    href={String(profile.socialLinks?.website || profile.website).startsWith('http') ? String(profile.socialLinks?.website || profile.website) : `https://${profile.socialLinks?.website || profile.website}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 text-[11px] font-bold hover:bg-slate-200 transition"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold hover:bg-slate-200 transition shadow-2xs"
                   >
-                    <Globe className="w-3 h-3 text-slate-600" />
-                    <span>Website</span>
+                    <Globe className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                    <span>{String(profile.socialLinks?.website || profile.website).replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+                  </a>
+                )}
+                {(profile?.socialLinks?.twitter || profile?.twitter) && (
+                  <a
+                    href={`https://x.com/${String(profile.socialLinks?.twitter || profile.twitter).replace(/^@/, '').replace(/^https?:\/\/(www\.)?(twitter|x)\.com\//, '').replace(/\/$/, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 text-white border border-slate-800 text-xs font-bold hover:bg-slate-800 transition shadow-2xs"
+                  >
+                    <TwitterXIcon className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                    <span>@{String(profile.socialLinks?.twitter || profile.twitter).replace(/^@/, '').replace(/^https?:\/\/(www\.)?(twitter|x)\.com\//, '').replace(/\/$/, '')}</span>
                   </a>
                 )}
               </div>
             )}
 
-            {/* CONTACT SHOWCASE ROW */}
+            {/* DIRECT CONTACT & PHONE NUMBER SHOWCASE */}
             {isOwnProfile ? (
-              <div className="flex flex-wrap items-center gap-2 pt-1 w-full">
-                <button
-                  onClick={() => {
-                    if (totalLimitReached) {
-                      alert('Posting Quota Limit Reached!\n\nYou have used all 10 photo posts and 30 text posts. Delete an existing listing below to release quota before creating a new post.');
-                      return;
-                    }
-                    if (onOpenNewListing) onOpenNewListing();
-                  }}
-                  className={`flex-1 font-bold py-2 px-3 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer ${
-                    totalLimitReached 
-                      ? 'bg-slate-100 text-slate-400 border border-slate-200' 
-                      : 'bg-emerald-700 hover:bg-emerald-800 text-white'
-                  }`}
-                >
-                  <PlusCircle className="w-3.5 h-3.5 text-amber-300" />
-                  <span>+ Post Produce Listing</span>
-                </button>
+              <div className="space-y-2 w-full pt-1">
+                {/* Phone number indicator for owner */}
+                <div className="flex items-center justify-between bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Phone className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <span className="text-slate-500 font-medium">Your Phone (Visible to Viewers):</span>
+                    <span className="font-mono font-bold text-slate-900 truncate">
+                      {profile?.phone || 'Not set yet'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => onOpenEditProfile && onOpenEditProfile('general')}
+                    className="text-[11px] font-bold text-emerald-800 hover:underline shrink-0 ml-2 cursor-pointer"
+                  >
+                    {profile?.phone ? 'Edit' : '+ Add Phone'}
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => setActiveTab('payout')}
-                  className="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-300/80"
-                >
-                  <CreditCard className="w-3.5 h-3.5 text-amber-700" />
-                  <span>GPay & Bank</span>
-                </button>
+                {/* Primary Action Buttons */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (totalLimitReached) {
+                        alert('Posting Quota Limit Reached!\n\nYou have used all 10 photo posts and 30 text posts. Delete an existing listing below to release quota before creating a new post.');
+                        return;
+                      }
+                      if (onOpenNewListing) onOpenNewListing();
+                    }}
+                    className={`flex-1 font-bold py-2 px-3 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer ${
+                      totalLimitReached 
+                        ? 'bg-slate-100 text-slate-400 border border-slate-200' 
+                        : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                    }`}
+                  >
+                    <PlusCircle className="w-3.5 h-3.5 text-amber-300" />
+                    <span>+ Post Produce Listing</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab('payout')}
+                    className="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-300/80"
+                  >
+                    <CreditCard className="w-3.5 h-3.5 text-amber-700" />
+                    <span>GPay & Bank</span>
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                {cleanPhone && (
-                  <a
-                    href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hello ${profile?.name || profile?.organization}, I found your produce listing on ZOHARVEST and would like to contact you.`)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex-1 min-w-[130px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>Chat on WhatsApp</span>
-                  </a>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2.5 w-full">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-extrabold text-slate-800 flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Direct Producer Contacts</span>
+                  </span>
+                  <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-300">
+                    Verified
+                  </span>
+                </div>
+
+                {/* Visible Phone Number Card */}
+                {profile?.phone ? (
+                  <div className="flex flex-wrap items-center justify-between bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 gap-2">
+                    <div className="min-w-0">
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Phone Number</div>
+                      <div className="text-sm font-black font-mono text-slate-900 tracking-wide">
+                        {profile.phone}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => copyToClipboard(profile.phone, 'prof_phone')}
+                        className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition text-xs font-bold flex items-center gap-1 cursor-pointer"
+                        title="Copy Phone Number"
+                      >
+                        {copiedKey === 'prof_phone' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedKey === 'prof_phone' ? 'Copied' : 'Copy'}</span>
+                      </button>
+                      <a
+                        href={`tel:${profile.phone}`}
+                        className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white transition text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Call</span>
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-500 italic bg-white p-2.5 rounded-xl border border-slate-200">
+                    No phone number listed.
+                  </div>
                 )}
 
-                {profile?.phone && (
-                  <a
-                    href={`tel:${profile.phone}`}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200"
-                  >
-                    <Phone className="w-3.5 h-3.5 text-slate-600" />
-                    <span>Call Direct</span>
-                  </a>
-                )}
+                {/* WhatsApp & Email Action Buttons */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {cleanPhone && (
+                    <a
+                      href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hello ${profile?.name || profile?.organization}, I found your produce listing on ZOHARVEST and would like to contact you.`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 min-w-[140px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>WhatsApp ({profile?.whatsapp || profile?.phone})</span>
+                    </a>
+                  )}
 
-                {profile?.email && (
-                  <a
-                    href={`mailto:${profile.email}`}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200"
-                  >
-                    <Mail className="w-3.5 h-3.5 text-slate-600" />
-                    <span>Email</span>
-                  </a>
-                )}
+                  {profile?.email && (
+                    <a
+                      href={`mailto:${profile.email}`}
+                      className="bg-white hover:bg-slate-100 text-slate-800 font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200 shadow-2xs"
+                    >
+                      <Mail className="w-3.5 h-3.5 text-slate-600" />
+                      <span>{profile.email}</span>
+                    </a>
+                  )}
+                </div>
               </div>
             )}
 

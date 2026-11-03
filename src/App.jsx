@@ -581,6 +581,7 @@ export default function App() {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         currentUser={currentUser}
+        token={authToken}
         districts={districts}
         onProfileUpdated={handleProfileUpdated}
         initialTab={profileInitialTab}

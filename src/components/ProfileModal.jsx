@@ -41,6 +41,7 @@ export default function ProfileModal({
   isOpen,
   onClose,
   currentUser,
+  token,
   districts = [],
   onProfileUpdated,
   initialTab = 'general',
@@ -123,7 +124,7 @@ export default function ProfileModal({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const token = localStorage.getItem('zh_token');
+  const activeToken = token || (typeof window !== 'undefined' ? localStorage.getItem('zh_token') : null);
 
   // Handle avatar file selection & auto-downscaling
   const handleAvatarPick = async (e) => {
@@ -166,32 +167,37 @@ export default function ProfileModal({
     setLoading(true);
 
     try {
+      const activeToken = token || localStorage.getItem('zh_token');
+      if (!activeToken) {
+        throw new Error('Please sign in to save your profile changes.');
+      }
+
       const res = await fetch('/api/users/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${activeToken}`
         },
         body: JSON.stringify({
-          name,
-          phone,
-          whatsapp,
-          gpayNumber,
-          upiId,
-          organization,
+          name: name ? name.trim() : undefined,
+          phone: phone ? phone.trim() : '',
+          whatsapp: whatsapp ? whatsapp.trim() : (phone ? phone.trim() : ''),
+          gpayNumber: gpayNumber ? gpayNumber.trim() : '',
+          upiId: upiId ? upiId.trim() : '',
+          organization: organization ? organization.trim() : undefined,
           district,
-          address,
-          bio,
+          address: address ? address.trim() : '',
+          bio: bio ? bio.trim() : '',
           avatarUrl,
-          gstinOrFpoNumber,
-          instagram,
-          website,
-          twitter,
+          gstinOrFpoNumber: gstinOrFpoNumber ? gstinOrFpoNumber.trim() : '',
+          instagram: instagram ? instagram.trim() : '',
+          website: website ? website.trim() : '',
+          twitter: twitter ? twitter.trim() : '',
           bankAccount: {
-            bankName,
-            accountNumber,
-            ifsc,
-            beneficiary
+            bankName: bankName ? bankName.trim() : '',
+            accountNumber: accountNumber ? accountNumber.trim() : '',
+            ifsc: ifsc ? ifsc.trim() : '',
+            beneficiary: beneficiary ? beneficiary.trim() : ''
           }
         })
       });
@@ -203,9 +209,12 @@ export default function ProfileModal({
 
       // Update storage and parent state
       localStorage.setItem('zh_user', JSON.stringify(data.user));
-      onProfileUpdated(data.user);
+      if (onProfileUpdated) onProfileUpdated(data.user);
       setSuccessMsg('Profile settings updated successfully!');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      setTimeout(() => {
+        setSuccessMsg('');
+        if (onClose) onClose();
+      }, 1200);
     } catch (err) {
       setErrorMsg(err.message);
     } finally {
@@ -228,7 +237,7 @@ export default function ProfileModal({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${activeToken}`
         },
         body: JSON.stringify({ credential: response.credential })
       });
@@ -322,7 +331,7 @@ export default function ProfileModal({
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${activeToken}`
         },
         body: JSON.stringify({
           currentPassword: hasExistingPassword ? currentPassword : '',
@@ -555,9 +564,9 @@ export default function ProfileModal({
                   <Phone className="w-4 h-4 text-slate-400 absolute left-3" />
                   <input
                     type="tel"
-                    required
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. +91 94361 00000"
                     className="w-full pl-9 pr-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                   />
                 </div>
@@ -630,24 +639,34 @@ export default function ProfileModal({
             </div>
 
             {/* Social & Web Links for Profile Showcase */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">Instagram Username / Handle</label>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Instagram Handle</label>
                 <input
                   type="text"
                   value={instagram}
                   onChange={(e) => setInstagram(e.target.value)}
-                  placeholder="e.g. @mizo_organic_spices"
+                  placeholder="e.g. @mizo_organic"
                   className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">Website or Portfolio Link</label>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Website Link</label>
                 <input
                   type="text"
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
                   placeholder="e.g. https://zoharvest.in"
+                  className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Twitter / X Handle</label>
+                <input
+                  type="text"
+                  value={twitter}
+                  onChange={(e) => setTwitter(e.target.value)}
+                  placeholder="e.g. @mizo_grower"
                   className="w-full py-2 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
               </div>
