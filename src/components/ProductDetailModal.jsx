@@ -51,8 +51,8 @@ export default function ProductDetailModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="relative bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+      <div className="relative bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden my-4 sm:my-8">
         
         {/* Top Actions: Share & Close */}
         <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5">
@@ -73,7 +73,7 @@ export default function ProductDetailModal({
         </div>
 
         {copiedShare && (
-          <div className="absolute top-16 right-4 z-20 bg-emerald-800 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg animate-in fade-in">
+          <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-50 max-w-xs mx-auto sm:mx-0 bg-slate-900 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xl border border-white/20 animate-in fade-in text-center">
             Listing link copied!
           </div>
         )}
@@ -234,14 +234,9 @@ export default function ProductDetailModal({
             <div className="pt-4 border-t border-slate-100 space-y-2.5">
               
               {isOwnProduct && (
-                <div className="bg-emerald-50 border border-emerald-200/90 rounded-2xl p-3 flex items-start gap-2.5 text-xs text-emerald-950">
-                  <Sparkles className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-extrabold text-emerald-950 block">This is your active listing</span>
-                    <p className="text-[11px] text-emerald-800/90 mt-0.5">
-                      Wholesale buyers reach you directly on your WhatsApp or phone, and pay to your GPay or Bank Account.
-                    </p>
-                  </div>
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 flex items-center gap-2 text-xs text-emerald-950 font-semibold">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  <span>Your active harvest post</span>
                 </div>
               )}
 

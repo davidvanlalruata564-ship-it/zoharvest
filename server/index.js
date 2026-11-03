@@ -1902,12 +1902,22 @@ app.put('/api/users/profile', authenticateToken, (req, res) => {
   }
   if (bankAccount) {
     user.bankAccount = {
-      bankName: bankAccount.bankName || user.bankAccount?.bankName || 'Mizoram Rural Bank',
-      accountNumber: bankAccount.accountNumber || user.bankAccount?.accountNumber || '',
-      ifsc: bankAccount.ifsc || user.bankAccount?.ifsc || '',
-      beneficiary: bankAccount.beneficiary || user.bankAccount?.beneficiary || user.name
+      bankName: bankAccount.bankName ? bankAccount.bankName.trim() : (user.bankAccount?.bankName || ''),
+      accountNumber: bankAccount.accountNumber ? bankAccount.accountNumber.trim() : (user.bankAccount?.accountNumber || ''),
+      ifsc: bankAccount.ifsc ? bankAccount.ifsc.trim() : (user.bankAccount?.ifsc || ''),
+      beneficiary: bankAccount.beneficiary ? bankAccount.beneficiary.trim() : (user.bankAccount?.beneficiary || user.name)
     };
   }
+
+  // Also propagate updated contact & payment details to user's listings
+  products.forEach(p => {
+    if (p.sellerId === user.id) {
+      if (user.phone) p.phone = user.phone;
+      if (user.whatsapp) p.whatsapp = user.whatsapp;
+      if (user.gpayNumber) p.gpayNumber = user.gpayNumber;
+      if (user.upiId) p.upiId = user.upiId;
+    }
+  });
 
   logSecurityEvent('PROFILE_UPDATED', { userId: user.id }, req);
   saveDb();

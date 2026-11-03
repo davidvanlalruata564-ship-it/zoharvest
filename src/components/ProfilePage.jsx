@@ -301,42 +301,42 @@ export default function ProfilePage({
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 pb-28 md:pb-16 space-y-4 animate-in fade-in duration-200">
+    <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 pb-28 md:pb-16 space-y-4 animate-in fade-in duration-200 overflow-x-hidden w-full max-w-full">
       
       {/* Top Mobile-App Style App Bar */}
-      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md -mx-3 sm:-mx-6 px-4 sm:px-6 py-3 border-b border-slate-100 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md -mx-3 sm:-mx-6 px-3.5 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200/80 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           {onBack && (
             <button
               onClick={onBack}
-              className="p-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition cursor-pointer"
+              className="p-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition cursor-pointer shrink-0"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
           )}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-extrabold text-sm text-slate-900 font-mono">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-extrabold text-sm text-slate-900 font-mono truncate max-w-[130px] sm:max-w-[240px]">
               @{profile?.username || 'member'}
             </span>
             {profile?.isVerified && (
               <ShieldCheck className="w-4 h-4 text-emerald-600 fill-emerald-100 shrink-0" />
             )}
             {isOwnProfile && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-950 border border-emerald-300">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-950 border border-emerald-300 shrink-0">
                 You
               </span>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 relative">
+        <div className="flex items-center gap-1.5 shrink-0 relative">
           {/* Share Profile button */}
           <button
             onClick={handleShareProfile}
             className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer flex items-center gap-1.5 text-xs font-bold"
             title="Share Profile Link"
           >
-            <Share2 className="w-4 h-4 text-emerald-700" />
+            <Share2 className="w-4 h-4 text-emerald-700 shrink-0" />
             <span className="hidden sm:inline">Share</span>
           </button>
 
@@ -351,51 +351,58 @@ export default function ProfilePage({
 
           {/* Dropdown Menu */}
           {menuOpen && (
-            <div className="absolute right-0 top-11 z-30 w-48 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 text-xs text-slate-700 animate-in fade-in zoom-in-95">
-              {isOwnProfile ? (
-                <>
-                  <button
-                    onClick={() => { setMenuOpen(false); if (onOpenEditProfile) onOpenEditProfile('general'); }}
-                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 font-semibold"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Edit Profile</span>
-                  </button>
-                  <button
-                    onClick={() => { setMenuOpen(false); if (onOpenEditProfile) onOpenEditProfile('payment'); }}
-                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 font-semibold"
-                  >
-                    <CreditCard className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Payment Settings</span>
-                  </button>
-                  <div className="border-t border-slate-100 my-1"></div>
-                  {onLogout && (
+            <>
+              <div 
+                className="fixed inset-0 z-30" 
+                onClick={() => setMenuOpen(false)} 
+              />
+              <div className="absolute right-0 top-11 z-40 w-48 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 text-xs text-slate-700 animate-in fade-in zoom-in-95">
+                {isOwnProfile ? (
+                  <>
                     <button
-                      onClick={() => { setMenuOpen(false); onLogout(); }}
-                      className="w-full px-4 py-2 text-left hover:bg-rose-50 text-rose-700 flex items-center gap-2 font-bold"
+                      onClick={() => { setMenuOpen(false); if (onOpenEditProfile) onOpenEditProfile('general'); }}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 font-semibold cursor-pointer"
                     >
-                      <span>Sign Out</span>
+                      <Edit3 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <span>Edit Profile</span>
                     </button>
-                  )}
-                </>
-              ) : (
-                <button
-                  onClick={() => { setMenuOpen(false); handleShareProfile(); }}
-                  className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 font-semibold"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Copy Profile Link</span>
-                </button>
-              )}
-            </div>
+                    <button
+                      onClick={() => { setMenuOpen(false); if (onOpenEditProfile) onOpenEditProfile('payment'); }}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 font-semibold cursor-pointer"
+                    >
+                      <CreditCard className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <span>Payment Settings</span>
+                    </button>
+                    <div className="border-t border-slate-100 my-1"></div>
+                    {onLogout && (
+                      <button
+                        onClick={() => { setMenuOpen(false); onLogout(); }}
+                        className="w-full px-4 py-2 text-left hover:bg-rose-50 text-rose-700 flex items-center gap-2 font-bold cursor-pointer"
+                      >
+                        <span>Sign Out</span>
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <button
+                    onClick={() => { setMenuOpen(false); handleShareProfile(); }}
+                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 font-semibold cursor-pointer"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                    <span>Copy Profile Link</span>
+                  </button>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* Toast Feedback */}
+      {/* Toast Feedback - Fixed floating banner always visible and contained */}
       {toastMessage && (
-        <div className="bg-emerald-700 text-white text-xs font-bold py-2.5 px-4 rounded-2xl text-center shadow-md animate-in fade-in">
-          {toastMessage}
+        <div className="fixed top-4 left-4 right-4 z-50 max-w-sm mx-auto bg-slate-900/95 backdrop-blur-md text-white text-xs font-bold py-2.5 px-4 rounded-2xl text-center shadow-2xl border border-white/20 animate-in fade-in slide-in-from-top-2 flex items-center justify-center gap-2">
+          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span className="truncate">{toastMessage}</span>
         </div>
       )}
 
@@ -896,7 +903,7 @@ export default function ProfilePage({
                 className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5 shadow-sm"
               >
                 <CreditCard className="w-4 h-4 text-amber-300" />
-                <span>✏️ Update Your GPay & Bank Details</span>
+                <span>Update GPay & Bank Details</span>
               </button>
             </div>
           )}

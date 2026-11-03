@@ -385,7 +385,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAFAF9] font-sans selection:bg-emerald-700 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#FAFAF9] font-sans selection:bg-emerald-700 selection:text-white overflow-x-hidden w-full max-w-full">
       
       {/* Top Main Navigation */}
       <Navbar
@@ -475,7 +475,7 @@ export default function App() {
               currentUser={currentUser}
               products={products}
               onSelectProduct={(p) => setSelectedProductDetail(p)}
-              onOpenEditProfile={() => handleOpenProfile('general')}
+              onOpenEditProfile={(tab = 'general') => handleOpenProfile(tab)}
               onOpenNewListing={() => {
                 setEditingProduct(null);
                 setIsNewListingOpen(true);

@@ -19,7 +19,8 @@ import {
   Camera,
   Trash2,
   Loader2,
-  Upload
+  Upload,
+  ExternalLink
 } from 'lucide-react';
 import { compressImage, formatBytes } from '../utils/imageCompressor';
 
@@ -57,35 +58,65 @@ export default function ProfileModal({
   // Synchronize initialTab when opening
   React.useEffect(() => {
     if (initialTab) {
-      setActiveTab(initialTab);
+      if (initialTab === 'payment' || initialTab === 'bank' || initialTab === 'gpay') {
+        setActiveTab('bank');
+      } else if (initialTab === 'security' || initialTab === 'password') {
+        setActiveTab('security');
+      } else {
+        setActiveTab('general');
+      }
     }
   }, [initialTab, isOpen]);
 
   // General fields
-  const [avatarUrl, setAvatarUrl] = useState(currentUser.avatarUrl || '');
+  const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || '');
   const [avatarStats, setAvatarStats] = useState(null);
   const [compressingAvatar, setCompressingAvatar] = useState(false);
   const avatarInputRef = useRef(null);
 
-  const [name, setName] = useState(currentUser.name || '');
-  const [phone, setPhone] = useState(currentUser.phone || '');
-  const [organization, setOrganization] = useState(currentUser.organization || '');
-  const [district, setDistrict] = useState(currentUser.district || districts[0] || 'Champhai');
-  const [address, setAddress] = useState(currentUser.address || '');
-  const [bio, setBio] = useState(currentUser.bio || '');
-  const [gstinOrFpoNumber, setGstinOrFpoNumber] = useState(currentUser.verificationDoc || '');
-  const [instagram, setInstagram] = useState(currentUser.instagram || '');
-  const [website, setWebsite] = useState(currentUser.website || '');
-  const [twitter, setTwitter] = useState(currentUser.twitter || '');
+  const [name, setName] = useState(currentUser?.name || '');
+  const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [organization, setOrganization] = useState(currentUser?.organization || '');
+  const [district, setDistrict] = useState(currentUser?.district || districts[0] || 'Champhai');
+  const [address, setAddress] = useState(currentUser?.address || '');
+  const [bio, setBio] = useState(currentUser?.bio || '');
+  const [gstinOrFpoNumber, setGstinOrFpoNumber] = useState(currentUser?.verificationDoc || '');
+  const [instagram, setInstagram] = useState(currentUser?.instagram || '');
+  const [website, setWebsite] = useState(currentUser?.website || '');
+  const [twitter, setTwitter] = useState(currentUser?.twitter || '');
 
   // Direct Payment & Bank fields
-  const [bankName, setBankName] = useState(currentUser.bankAccount?.bankName || '');
-  const [accountNumber, setAccountNumber] = useState(currentUser.bankAccount?.accountNumber || '');
-  const [ifsc, setIfsc] = useState(currentUser.bankAccount?.ifsc || '');
-  const [beneficiary, setBeneficiary] = useState(currentUser.bankAccount?.beneficiary || currentUser.name || '');
-  const [upiId, setUpiId] = useState(currentUser.upiId || '');
-  const [gpayNumber, setGpayNumber] = useState(currentUser.gpayNumber || currentUser.phone || '');
-  const [whatsapp, setWhatsapp] = useState(currentUser.whatsapp || currentUser.phone || '');
+  const [bankName, setBankName] = useState(currentUser?.bankAccount?.bankName || '');
+  const [accountNumber, setAccountNumber] = useState(currentUser?.bankAccount?.accountNumber || '');
+  const [ifsc, setIfsc] = useState(currentUser?.bankAccount?.ifsc || '');
+  const [beneficiary, setBeneficiary] = useState(currentUser?.bankAccount?.beneficiary || currentUser?.name || '');
+  const [upiId, setUpiId] = useState(currentUser?.upiId || '');
+  const [gpayNumber, setGpayNumber] = useState(currentUser?.gpayNumber || currentUser?.phone || '');
+  const [whatsapp, setWhatsapp] = useState(currentUser?.whatsapp || currentUser?.phone || '');
+
+  // Synchronize form fields when currentUser or isOpen changes
+  React.useEffect(() => {
+    if (currentUser && isOpen) {
+      setName(currentUser.name || '');
+      setPhone(currentUser.phone || '');
+      setOrganization(currentUser.organization || '');
+      setDistrict(currentUser.district || districts[0] || 'Champhai');
+      setAddress(currentUser.address || '');
+      setBio(currentUser.bio || '');
+      setAvatarUrl(currentUser.avatarUrl || '');
+      setGstinOrFpoNumber(currentUser.verificationDoc || '');
+      setInstagram(currentUser.instagram || currentUser.socialLinks?.instagram || '');
+      setWebsite(currentUser.website || currentUser.socialLinks?.website || '');
+      setTwitter(currentUser.twitter || currentUser.socialLinks?.twitter || '');
+      setBankName(currentUser.bankAccount?.bankName || '');
+      setAccountNumber(currentUser.bankAccount?.accountNumber || '');
+      setIfsc(currentUser.bankAccount?.ifsc || '');
+      setBeneficiary(currentUser.bankAccount?.beneficiary || currentUser.name || '');
+      setUpiId(currentUser.upiId || '');
+      setGpayNumber(currentUser.gpayNumber || currentUser.phone || '');
+      setWhatsapp(currentUser.whatsapp || currentUser.phone || '');
+    }
+  }, [currentUser, isOpen, districts]);
 
   // Security / Password fields
   const [currentPassword, setCurrentPassword] = useState('');
@@ -371,13 +402,13 @@ export default function ProfileModal({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-800/90 hover:bg-emerald-700 text-amber-300 border border-emerald-600/70 transition cursor-pointer shadow-xs shrink-0"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                <span>View My Public Storefront</span>
+                <span>View Public Profile</span>
               </button>
             )}
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex items-center gap-2 mt-6 pt-2 border-t border-emerald-800/60">
+          <div className="flex items-center gap-2 mt-6 pt-2 border-t border-emerald-800/60 overflow-x-auto scrollbar-none whitespace-nowrap">
             <button
               onClick={() => { setActiveTab('general'); setErrorMsg(''); setSuccessMsg(''); }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
@@ -638,11 +669,10 @@ export default function ProfileModal({
         {/* Tab 2: Direct P2P Payment Details (GPay & Bank) */}
         {activeTab === 'bank' && (
           <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-start gap-3">
-              <CreditCard className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
-              <div className="text-xs text-emerald-950">
-                <span className="font-bold block">Direct Buyer-to-Seller Payment Setup</span>
-                ZOHARVEST does not handle payments or deduct platform commissions on this website. Buyers will see your Google Pay / UPI and Bank Account details on your public profile to pay you directly.
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3">
+              <CreditCard className="w-5 h-5 text-emerald-700 shrink-0" />
+              <div className="text-xs text-emerald-950 font-medium">
+                Set up your Google Pay, UPI ID, or Bank Account for direct buyer transfers.
               </div>
             </div>
 

@@ -231,11 +231,11 @@ export default function NewListingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="relative bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+      <div className="relative bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-4 sm:my-8 animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 text-white p-6 relative">
+        <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-800 text-white p-5 sm:p-6 relative">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-1.5 rounded-full bg-emerald-800/80 hover:bg-emerald-700 text-emerald-200 transition cursor-pointer"
@@ -245,7 +245,7 @@ export default function NewListingModal({
           <div className="flex items-center gap-2 mb-1">
             <PlusCircle className="w-5 h-5 text-amber-400" />
             <span className="text-xs font-bold uppercase tracking-wider text-amber-300">
-              Grassroots Producer Portal
+              Produce Listing
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white">
